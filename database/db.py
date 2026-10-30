@@ -4,8 +4,17 @@ from config import Config
 
 def get_db_connection():
     """Returns a SQLite connection with row factory enabled."""
-    os.makedirs(os.path.dirname(Config.DATABASE_PATH), exist_ok=True)
-    conn = sqlite3.connect(Config.DATABASE_PATH)
+    db_path = Config.DATABASE_PATH
+    try:
+        os.makedirs(os.path.dirname(db_path), exist_ok=True)
+        conn = sqlite3.connect(db_path)
+    except (sqlite3.OperationalError, OSError, PermissionError) as e:
+        # Fallback to /tmp in read-only serverless filesystems
+        print(f"Notice: unable to open database at {db_path} ({e}). Switching to /tmp/civic_ai.db")
+        Config.DATABASE_PATH = '/tmp/civic_ai.db'
+        os.makedirs('/tmp', exist_ok=True)
+        conn = sqlite3.connect('/tmp/civic_ai.db')
+
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     return conn
@@ -54,29 +63,60 @@ def init_db(auto_seed=True):
             check_conn.close()
 
 def query_db(query, args=(), one=False):
-    """Utility to query database and return dictionary rows."""
-    conn = get_db_connection()
+    """Utility to query database and return dictionary rows with auto-recovery for missing tables."""
     try:
-        cur = conn.cursor()
-        cur.execute(query, args)
-        rv = cur.fetchall()
-        cur.close()
-        return (dict(rv[0]) if rv else None) if one else [dict(r) for r in rv]
-    finally:
-        conn.close()
-
-def execute_db(query, args=()):
-    """Utility to execute insert/update/delete and return lastrowid or affected rows."""
-    conn = get_db_connection()
-    try:
-        with conn:
+        conn = get_db_connection()
+        try:
             cur = conn.cursor()
             cur.execute(query, args)
-            last_id = cur.lastrowid
+            rv = cur.fetchall()
             cur.close()
-            return last_id
-    finally:
-        conn.close()
+            return (dict(rv[0]) if rv else None) if one else [dict(r) for r in rv]
+        finally:
+            conn.close()
+    except sqlite3.OperationalError as e:
+        if "no such table" in str(e).lower():
+            print(f"Table missing during query ({e}), self-healing database...")
+            init_db()
+            conn = get_db_connection()
+            try:
+                cur = conn.cursor()
+                cur.execute(query, args)
+                rv = cur.fetchall()
+                cur.close()
+                return (dict(rv[0]) if rv else None) if one else [dict(r) for r in rv]
+            finally:
+                conn.close()
+        raise
+
+def execute_db(query, args=()):
+    """Utility to execute insert/update/delete and return lastrowid with auto-recovery for missing tables."""
+    try:
+        conn = get_db_connection()
+        try:
+            with conn:
+                cur = conn.cursor()
+                cur.execute(query, args)
+                last_id = cur.lastrowid
+                cur.close()
+                return last_id
+        finally:
+            conn.close()
+    except sqlite3.OperationalError as e:
+        if "no such table" in str(e).lower():
+            print(f"Table missing during execute ({e}), self-healing database...")
+            init_db()
+            conn = get_db_connection()
+            try:
+                with conn:
+                    cur = conn.cursor()
+                    cur.execute(query, args)
+                    last_id = cur.lastrowid
+                    cur.close()
+                    return last_id
+            finally:
+                conn.close()
+        raise
 
 def log_activity(complaint_id, action, details="", actor="System"):
     """Adds an entry to the activity log."""
