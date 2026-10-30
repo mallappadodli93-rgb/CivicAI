@@ -1,0 +1,499 @@
+{% extends "base.html" %}
+
+{% block title %}Municipal Admin Dashboard - CivicAI{% endblock %}
+
+{% block content %}
+<div class="admin-container">
+  
+  <!-- Responsive Admin Sidebar -->
+  {% include "admin_sidebar.html" %}
+
+  <!-- Main Admin Dashboard Content -->
+  <div class="admin-content">
+    
+    <!-- Top Action Bar -->
+    <div class="page-header" style="padding-top: 0; display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 16px;">
+      <div>
+        <div style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; font-weight: 700; color: var(--teal-primary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px;">
+          <span class="ai-pulse-dot"></span> Municipal Control Center & Analytics
+        </div>
+        <h1 class="page-header-title">Executive Command Dashboard</h1>
+        <p class="page-header-subtitle">
+          Real-time civic grievance metrics, AI triage distribution, and field operational status.
+        </p>
+      </div>
+
+      <div style="display: flex; gap: 10px; align-items: center;">
+        <button class="btn btn-secondary btn-sm mobile-toggle" id="adminSidebarToggle" style="display: none;">
+          <i class="fa-solid fa-bars-staggered"></i> Sidebar
+        </button>
+        <button class="btn btn-secondary btn-sm" onclick="loadDashboardMetrics()">
+          <i class="fa-solid fa-arrows-rotate"></i> Refresh
+        </button>
+        <a href="{{ url_for('admin_complaints') }}" class="btn btn-primary btn-sm">
+          <i class="fa-solid fa-sliders"></i> Complaint Console
+        </a>
+      </div>
+    </div>
+
+    <!-- Statistics KPI Cards: Total, Pending, Resolved, Urgent -->
+    <div class="stat-grid">
+      
+      <!-- Total Complaints -->
+      <div class="stat-card stat-total">
+        <div class="stat-icon blue">
+          <i class="fa-solid fa-layer-group"></i>
+        </div>
+        <div class="stat-info">
+          <div class="stat-value" id="kpiTotal">--</div>
+          <div class="stat-label">Total Complaints</div>
+        </div>
+      </div>
+
+      <!-- Pending Complaints -->
+      <div class="stat-card stat-pending">
+        <div class="stat-icon orange">
+          <i class="fa-solid fa-hourglass-half"></i>
+        </div>
+        <div class="stat-info">
+          <div class="stat-value" id="kpiPending">--</div>
+          <div class="stat-label">Pending Complaints</div>
+        </div>
+      </div>
+
+      <!-- Resolved Complaints -->
+      <div class="stat-card stat-resolved">
+        <div class="stat-icon green">
+          <i class="fa-solid fa-circle-check"></i>
+        </div>
+        <div class="stat-info">
+          <div class="stat-value" id="kpiResolved">--</div>
+          <div class="stat-label">Resolved Complaints</div>
+        </div>
+      </div>
+
+      <!-- Urgent Complaints -->
+      <div class="stat-card stat-urgent">
+        <div class="stat-icon red">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+        </div>
+        <div class="stat-info">
+          <div class="stat-value" id="kpiUrgent">--</div>
+          <div class="stat-label">Urgent Complaints</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Charts Row: Status Doughnut & Priority Triage -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 28px;" class="dashboard-chart-grid">
+      
+      <!-- Status Doughnut Chart -->
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">
+            <i class="fa-solid fa-chart-pie" style="color: var(--teal-primary);"></i> Complaint Status Distribution
+          </h3>
+          <span style="font-size: 0.8rem; color: var(--text-dim);">5 Lifecycle Stages</span>
+        </div>
+        <div style="height: 280px; position: relative;">
+          <canvas id="statusChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Priority Distribution Bar Chart -->
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">
+            <i class="fa-solid fa-gauge" style="color: var(--blue-primary);"></i> AI Priority Triage Profile
+          </h3>
+          <span style="font-size: 0.8rem; color: var(--text-dim);">Risk Weighted</span>
+        </div>
+        <div style="height: 280px; position: relative;">
+          <canvas id="priorityChart"></canvas>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Charts Row 2: Category Breakdown & Live Municipal Activity Feed -->
+    <div style="display: grid; grid-template-columns: 1.25fr 0.75fr; gap: 24px; margin-bottom: 32px;" class="dashboard-bottom-grid">
+      
+      <!-- Department Volume Horizontal Bar Chart -->
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">
+            <i class="fa-solid fa-chart-column" style="color: var(--teal-primary);"></i> Grievance Volume by Department
+          </h3>
+          <span style="font-size: 0.8rem; color: var(--text-dim);">Categorical Volume</span>
+        </div>
+        <div style="height: 290px; position: relative;">
+          <canvas id="categoryChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Live Audit Stream -->
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">
+            <i class="fa-solid fa-bolt" style="color: var(--status-under-review);"></i> Live Audit Feed
+          </h3>
+          <span class="brand-ai-badge"><i class="fa-solid fa-clock-rotate-left"></i> Stream</span>
+        </div>
+        <div id="liveActivityFeed" style="display: flex; flex-direction: column; gap: 12px; max-height: 290px; overflow-y: auto;">
+          <!-- Populated via JS -->
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Municipal GIS Interactive Map & Hotspot Command Center -->
+    <div class="card" style="margin-bottom: 32px; padding: 22px;">
+      
+      <div style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 16px; margin-bottom: 16px;">
+        <div>
+          <div style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; font-weight: 700; color: var(--teal-primary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px;">
+            <i class="fa-solid fa-map-location-dot"></i> Geospatial Intelligence & All-Location Tracking
+          </div>
+          <h3 class="card-title" style="margin: 0; font-size: 1.3rem;">
+            Municipal Grievance GIS & All-Location Map
+          </h3>
+          <p style="color: var(--text-muted); font-size: 0.82rem; margin: 4px 0 0;">
+            Displays all citizen-reported grievance locations across all areas with automated bounds and clustering. (Note: Locations reflect user-reported coordinates, not live tracking).
+          </p>
+        </div>
+
+        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+          <span id="mapCounterBadge" class="badge badge-primary" style="font-size: 0.76rem; padding: 5px 12px;">
+            <i class="fa-solid fa-location-dot"></i> Loading locations...
+          </span>
+          <span style="font-size: 0.74rem; color: var(--teal-primary); display: flex; align-items: center; gap: 6px; font-weight: 600;">
+            <span class="ai-pulse-dot"></span> Live Sync
+          </span>
+          <button class="btn btn-secondary btn-sm" id="mapRefreshBtn" title="Fetch latest locations from database">
+            <i class="fa-solid fa-arrows-rotate"></i> Refresh Map
+          </button>
+          <button class="btn btn-secondary btn-sm" id="mapCenterBtn" title="Fit map to show all complaint locations">
+            <i class="fa-solid fa-expand"></i> Fit All Locations
+          </button>
+        </div>
+      </div>
+
+      <!-- Comprehensive All-Location Admin Filters Strip -->
+      <div style="background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 12px 16px; margin-bottom: 16px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between;">
+        
+        <!-- Search by Tracking ID or Address -->
+        <div style="display: flex; align-items: center; gap: 8px; flex: 1; min-width: 220px; max-width: 320px;">
+          <div style="position: relative; width: 100%;">
+            <input type="text" id="mapSearchInput" class="form-control" placeholder="Search by ID or address..." style="padding: 6px 10px 6px 30px; font-size: 0.82rem;">
+            <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); font-size: 0.78rem; color: var(--text-dim);"></i>
+          </div>
+        </div>
+
+        <!-- Filter Dropdowns -->
+        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+          <!-- Category -->
+          <select id="mapCategoryFilter" class="form-control" style="padding: 6px 10px; font-size: 0.82rem; width: auto;" title="Filter by category">
+            <option value="All">All Categories</option>
+            <option value="Road Damage">Road Damage</option>
+            <option value="Waterlogging">Waterlogging</option>
+            <option value="Garbage">Garbage</option>
+            <option value="Streetlight">Streetlight</option>
+            <option value="Drainage">Drainage</option>
+            <option value="Other">Other</option>
+          </select>
+
+          <!-- Priority -->
+          <select id="mapPriorityFilter" class="form-control" style="padding: 6px 10px; font-size: 0.82rem; width: auto;" title="Filter by priority">
+            <option value="All">All Priorities</option>
+            <option value="High">🔴 High Priority</option>
+            <option value="Medium">🟡 Medium Priority</option>
+            <option value="Low">🟢 Low Priority</option>
+          </select>
+
+          <!-- Status -->
+          <select id="mapStatusFilter" class="form-control" style="padding: 6px 10px; font-size: 0.82rem; width: auto;" title="Filter by status">
+            <option value="All">All Statuses</option>
+            <option value="Submitted">Submitted</option>
+            <option value="Under Review">Under Review</option>
+            <option value="Assigned">Assigned</option>
+            <option value="In Progress">In Progress</option>
+            <option value="Resolved">Resolved</option>
+          </select>
+
+          <!-- Source Filter (All vs Real Citizen vs Demo) -->
+          <select id="mapSourceFilter" class="form-control" style="padding: 6px 10px; font-size: 0.82rem; width: auto;" title="Filter by data source">
+            <option value="All">All Sources (Real & Demo)</option>
+            <option value="real">Verified Citizen Reports Only</option>
+            <option value="synthetic">Demonstration Records Only</option>
+          </select>
+
+          <!-- Reset Filters Button -->
+          <button class="btn btn-secondary btn-sm" id="mapResetFiltersBtn" title="Reset all map filters to default" style="padding: 6px 12px; font-size: 0.8rem;">
+            <i class="fa-solid fa-xmark"></i> Reset Filters
+          </button>
+        </div>
+      </div>
+
+      <!-- Map Legend Strip -->
+      <div style="display: flex; align-items: center; gap: 18px; flex-wrap: wrap; margin-bottom: 16px; font-size: 0.82rem; color: var(--text-muted); background: rgba(255,255,255,0.02); padding: 8px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
+        <strong style="color: var(--text-main);">Marker Legend:</strong>
+        <span style="display: flex; align-items: center; gap: 6px;"><span style="width: 10px; height: 10px; border-radius: 50%; background: #ef4444; display: inline-block; box-shadow: 0 0 6px #ef4444;"></span> High Priority</span>
+        <span style="display: flex; align-items: center; gap: 6px;"><span style="width: 10px; height: 10px; border-radius: 50%; background: #f59e0b; display: inline-block;"></span> Medium Priority</span>
+        <span style="display: flex; align-items: center; gap: 6px;"><span style="width: 10px; height: 10px; border-radius: 50%; background: #10b981; display: inline-block;"></span> Low Priority</span>
+        <span style="display: flex; align-items: center; gap: 6px;"><span style="width: 12px; height: 12px; border-radius: 50%; border: 2px dashed var(--teal-primary); display: inline-block;"></span> Hotspot Cluster Zone</span>
+        <span style="display: flex; align-items: center; gap: 6px;"><i class="fa-solid fa-layer-group" style="color: var(--teal-primary);"></i> Marker Clustering Active</span>
+      </div>
+
+      <!-- Map Layout Grid (Map + Hotspot Sidebar) -->
+      <div style="display: grid; grid-template-columns: 1.35fr 0.65fr; gap: 20px;" class="map-grid-layout">
+        <!-- Leaflet Map Container -->
+        <div id="complaintMap" style="height: 500px; width: 100%; border-radius: var(--radius-md); overflow: hidden; border: 1px solid var(--border-subtle);"></div>
+
+        <!-- Hotspot Intelligence Panel -->
+        <div style="display: flex; flex-direction: column; gap: 14px;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h4 style="font-size: 0.95rem; font-weight: 700; color: var(--text-main); margin: 0; display: flex; align-items: center; gap: 8px;">
+              <i class="fa-solid fa-fire-flame-curved" style="color: var(--priority-high);"></i> Active Hotspots
+            </h4>
+            <span id="hotspotCounterBadge" class="badge badge-priority-critical" style="font-size: 0.72rem;">0 Clusters</span>
+          </div>
+          <p style="font-size: 0.8rem; color: var(--text-dim); margin: 0; line-height: 1.4;">
+            Automated Haversine spatial clustering detects multiple complaints within ~850m radius.
+          </p>
+
+          <!-- Hotspot Cards Container -->
+          <div id="hotspotCardsContainer" style="display: flex; flex-direction: column; gap: 12px; max-height: 420px; overflow-y: auto;">
+            <!-- Populated dynamically via dashboard.js -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Complaints Requiring Location Correction (Missing Coordinates) -->
+      <div id="missingCoordinatesCard" style="display: none; margin-top: 20px; background: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); border-left: 4px solid var(--status-under-review); border-radius: var(--radius-md); padding: 16px 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <i class="fa-solid fa-triangle-exclamation" style="color: var(--status-under-review); font-size: 1.1rem;"></i>
+            <strong style="color: var(--text-main); font-size: 0.94rem;">Complaints Requiring Location Correction (<span id="missingCoordsCount">0</span>)</strong>
+          </div>
+          <span style="font-size: 0.76rem; color: var(--text-dim);">Coordinates missing &bull; Click to set pin</span>
+        </div>
+        <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 12px; line-height: 1.4;">
+          The following complaints were filed without exact coordinates and cannot appear on the map until their location is specified.
+        </p>
+        <div id="missingCoordsList" style="display: flex; flex-direction: column; gap: 8px; max-height: 200px; overflow-y: auto;">
+          <!-- Populated dynamically via JS -->
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Embedded Complaints Table on the Dashboard -->
+    <div class="card" style="padding: 0; overflow: hidden; margin-top: 10px;">
+      <div style="padding: 20px 24px; border-bottom: 1px solid var(--border-subtle); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+        <div>
+          <h3 class="card-title" style="margin-bottom: 4px;">
+            <i class="fa-solid fa-list-check" style="color: var(--teal-primary);"></i> Active Grievances Overview
+          </h3>
+          <p style="color: var(--text-muted); font-size: 0.86rem; margin: 0;">Recent complaints filed by citizens with live AI status and triage</p>
+        </div>
+        <a href="{{ url_for('admin_complaints') }}" class="btn btn-outline btn-sm">
+          Full Console &rarr;
+        </a>
+      </div>
+
+      <!-- Interactive Table Filter & Search Toolbar -->
+      <div style="padding: 12px 24px; background: var(--bg-surface-elevated); border-bottom: 1px solid var(--border-subtle); display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between;">
+        <div style="display: flex; gap: 10px; flex: 1; min-width: 240px; max-width: 360px;">
+          <input type="text" id="dashTableSearch" class="form-control" placeholder="Search ID, citizen, or location..." style="padding: 7px 12px; font-size: 0.84rem;">
+        </div>
+        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+          <select id="dashTablePriorityFilter" class="form-control" style="padding: 7px 10px; font-size: 0.84rem; width: auto;">
+            <option value="All">All Priorities</option>
+            <option value="High">High Priority</option>
+            <option value="Medium">Medium Priority</option>
+            <option value="Low">Low Priority</option>
+          </select>
+          <select id="dashTableStatusFilter" class="form-control" style="padding: 7px 10px; font-size: 0.84rem; width: auto;">
+            <option value="All">All Statuses</option>
+            <option value="Submitted">Submitted</option>
+            <option value="Under Review">Under Review</option>
+            <option value="Assigned">Assigned</option>
+            <option value="In Progress">In Progress</option>
+            <option value="Resolved">Resolved</option>
+          </select>
+          <button type="button" class="btn btn-secondary btn-sm" id="dashTableResetBtn" style="padding: 7px 12px; font-size: 0.8rem;">
+            <i class="fa-solid fa-xmark"></i> Clear
+          </button>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="table" id="dashboardComplaintsTable">
+          <thead>
+            <tr>
+              <th>Tracking ID</th>
+              <th>Citizen</th>
+              <th>Category</th>
+              <th>Location</th>
+              <th>Priority</th>
+              <th>Status</th>
+              <th style="text-align: right;">Action</th>
+            </tr>
+          </thead>
+          <tbody id="dashboardTableBody">
+            <!-- Populated via JS -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Triage Modal (Can be triggered directly from dashboard table!) -->
+  <div class="modal-backdrop" id="dashboardTriageModal">
+    <div class="modal" style="max-width: 840px;">
+      <button class="modal-close" onclick="closeDashboardTriageModal()">&times;</button>
+      
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 16px;">
+        <div>
+          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
+            <span style="font-family: monospace; font-size: 1.4rem; font-weight: 800; color: var(--teal-primary);" id="dashModalTracking">CIV-XXXX</span>
+            <span id="dashModalStatusBadge" class="badge">--</span>
+            <span id="dashModalPriorityBadge" class="badge">--</span>
+          </div>
+          <div style="font-size: 0.86rem; color: var(--text-muted);">
+            Reported by <strong id="dashModalCitizen" style="color: var(--text-main);">--</strong>
+          </div>
+        </div>
+
+        <a id="dashModalCitizenTrackLink" href="#" target="_blank" class="btn btn-outline btn-sm">
+          Citizen View <i class="fa-solid fa-arrow-up-right-from-square"></i>
+        </a>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 24px;" class="modal-layout">
+        <div>
+          <div style="margin-bottom: 16px;">
+            <div style="font-size: 0.78rem; font-weight: 700; color: var(--text-dim); text-transform: uppercase; margin-bottom: 6px;">Issue Details</div>
+            <p id="dashModalDesc" style="font-size: 0.92rem; line-height: 1.5; color: var(--text-main); background: rgba(255,255,255,0.02); padding: 12px; border-radius: var(--radius-md); border: 1px solid var(--border-subtle);"></p>
+          </div>
+
+          <div class="ai-panel" style="padding: 16px;">
+            <div style="font-size: 0.76rem; font-weight: 700; color: var(--teal-primary); text-transform: uppercase; margin-bottom: 6px;">
+              <i class="fa-solid fa-brain"></i> CivicAI Evaluation
+            </div>
+            <div id="dashModalAiExpl" style="font-size: 0.84rem; color: var(--text-muted); line-height: 1.4;">--</div>
+          </div>
+        </div>
+
+        <div style="background: var(--bg-surface-elevated); padding: 20px; border-radius: var(--radius-lg); border: 1px solid var(--border-subtle);">
+          <h4 style="font-size: 1rem; font-weight: 700; margin-bottom: 14px; display: flex; align-items: center; gap: 8px;">
+            <i class="fa-solid fa-user-gear" style="color: var(--teal-primary);"></i> Quick Triage
+          </h4>
+
+          <form id="dashTriageForm">
+            <input type="hidden" id="dashTriageId">
+
+            <div class="form-group" style="margin-bottom: 16px;">
+              <label class="form-label" for="dashStatusSelect">Update Status</label>
+              <select id="dashStatusSelect" class="form-control">
+                <option value="Submitted">Submitted</option>
+                <option value="Under Review">Under Review</option>
+                <option value="Assigned">Assigned</option>
+                <option value="In Progress">In Progress</option>
+                <option value="Resolved">Resolved</option>
+              </select>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 16px;">
+              <label class="form-label" for="dashDeptSelect">Department</label>
+              <select id="dashDeptSelect" class="form-control">
+                <option value="Department of Roads & Infrastructure">Department of Roads & Infrastructure</option>
+                <option value="Stormwater & Flood Management Division">Stormwater & Flood Management Division</option>
+                <option value="Solid Waste & Sanitation Department">Solid Waste & Sanitation Department</option>
+                <option value="Public Lighting & Electrical Works">Public Lighting & Electrical Works</option>
+                <option value="Water Supply & Sewerage Board">Water Supply & Sewerage Board</option>
+                <option value="General Municipal Administration">General Municipal Administration</option>
+              </select>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 16px;">
+              <label class="form-label" for="dashOfficerInput">Field Officer</label>
+              <input type="text" id="dashOfficerInput" class="form-control" placeholder="e.g. Officer Anita Roy">
+            </div>
+
+            <div class="form-group" style="margin-bottom: 16px;">
+              <label class="form-label" for="dashNoteInput">Action Note</label>
+              <textarea id="dashNoteInput" class="form-control" rows="2" placeholder="e.g. Dispatched repair crew..."></textarea>
+            </div>
+
+            <button type="submit" id="dashSaveBtn" class="btn btn-primary" style="width: 100%;">
+              <i class="fa-solid fa-floppy-disk"></i> Apply Triage
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Set/Correct Location for Complaints Missing Coordinates -->
+  <div class="modal-backdrop" id="locationCorrectionModal">
+    <div class="modal" style="max-width: 620px;">
+      <button class="modal-close" onclick="closeLocationCorrectionModal()">&times;</button>
+      
+      <div class="modal-header" style="margin-bottom: 16px;">
+        <h3 class="modal-title" style="display: flex; align-items: center; gap: 8px;">
+          <i class="fa-solid fa-map-location-dot" style="color: var(--teal-primary);"></i>
+          <span>Set Coordinates for <span id="corrModalTrackingId" style="font-family: monospace; color: var(--teal-primary);">--</span></span>
+        </h3>
+        <p style="color: var(--text-muted); font-size: 0.84rem; margin: 4px 0 0;">
+          Reported address: <strong id="corrModalAddressText" style="color: var(--text-main);">--</strong>
+        </p>
+      </div>
+
+      <div class="modal-body">
+        <input type="hidden" id="corrComplaintId">
+
+        <div style="margin-bottom: 12px; display: flex; gap: 10px; align-items: center;">
+          <input type="text" id="corrAddressInput" class="form-control" placeholder="Update address description if needed...">
+          <button type="button" class="btn btn-secondary btn-sm" id="corrGeocodeBtn">
+            <i class="fa-solid fa-magnifying-glass"></i> Find
+          </button>
+        </div>
+
+        <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 6px; display: flex; justify-content: space-between;">
+          <span>Click anywhere on the map to pinpoint exact coordinates:</span>
+          <span id="corrCoordStatus" style="font-family: monospace; font-weight: 700; color: var(--priority-critical);">Click map to set</span>
+        </div>
+
+        <div id="corrPickerMap" style="height: 280px; width: 100%; border-radius: var(--radius-md); overflow: hidden; border: 1px solid var(--border-subtle); margin-bottom: 16px;"></div>
+
+        <div style="display: flex; gap: 12px; justify-content: flex-end;">
+          <button type="button" class="btn btn-secondary" onclick="closeLocationCorrectionModal()">Cancel</button>
+          <button type="button" class="btn btn-primary" id="corrSaveBtn">
+            <i class="fa-solid fa-check"></i> Save Coordinates & Show on Map
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+<style>
+@media (max-width: 992px) {
+  #adminSidebarToggle {
+    display: inline-flex !important;
+  }
+}
+@media (max-width: 900px) {
+  .dashboard-chart-grid, .dashboard-bottom-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+</style>
+{% endblock %}

@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}CivicAI - Smart Citizen Complaint Management System{% endblock %}</title>
+  
+  <!-- Immediate Theme & Language Initialization (Prevents FOUC) -->
+  <script>
+    (function() {
+      try {
+        var theme = localStorage.getItem('civicai_theme') || 'dark';
+        document.documentElement.setAttribute('data-theme', theme);
+        var lang = localStorage.getItem('civicai_lang') || 'en';
+        document.documentElement.setAttribute('lang', lang);
+      } catch(e) {}
+    })();
+  </script>
+
+  <!-- Google Fonts: Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome 6 Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  
+  <!-- Application CSS -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/components.css') }}">
+  
+  <!-- Leaflet.js Interactive Map & OpenStreetMap -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Leaflet MarkerCluster for Complaint Grouping -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+
+  <!-- Chart.js for Admin Analytics -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+
+  <!-- Top Navigation Bar with CivicAI Logo & Quick Controls -->
+  <nav class="navbar">
+    <div class="container">
+      <a href="{{ url_for('home') }}" class="brand">
+        <div class="brand-icon">
+          <i class="fa-solid fa-landmark-dome"></i>
+        </div>
+        <span>Civic<span style="color: var(--teal-primary);">AI</span></span>
+        <span class="brand-ai-badge"><i class="fa-solid fa-microchip"></i> <span data-i18n="badge_ai_active">AI Active</span></span>
+      </a>
+
+      <!-- Desktop Navigation Links -->
+      <ul class="nav-links">
+        <li><a href="{{ url_for('home') }}" class="nav-link {% if request.path == '/' %}active{% endif %}"><i class="fa-solid fa-house"></i> <span data-i18n="nav_home">Home</span></a></li>
+        <li><a href="{{ url_for('submit_page') }}" class="nav-link {% if request.path == '/submit' %}active{% endif %}"><i class="fa-solid fa-circle-exclamation"></i> <span data-i18n="nav_report">Report a Problem</span></a></li>
+        <li><a href="{{ url_for('track_page') }}" class="nav-link {% if request.path == '/track' %}active{% endif %}"><i class="fa-solid fa-crosshairs"></i> <span data-i18n="nav_track">Track Status</span></a></li>
+        <li><a href="{{ url_for('admin_dashboard') }}" class="nav-link {% if request.path == '/admin' or request.path == '/admin/dashboard' %}active{% endif %}"><i class="fa-solid fa-chart-pie"></i> <span data-i18n="nav_dashboard">Admin Dashboard</span></a></li>
+        <li><a href="{{ url_for('admin_complaints') }}" class="nav-link {% if request.path == '/admin/complaints' %}active{% endif %}"><i class="fa-solid fa-sliders"></i> <span data-i18n="nav_manage">Manage</span></a></li>
+        <li><a href="{{ url_for('settings_page') }}" class="nav-link {% if request.path == '/settings' %}active{% endif %}"><i class="fa-solid fa-gear"></i> <span data-i18n="nav_settings">Settings</span></a></li>
+      </ul>
+
+      <!-- Action Buttons & Quick Controls -->
+      <div class="nav-actions">
+        
+        <!-- Language Switcher: English / ಕನ್ನಡ -->
+        <button class="nav-icon-btn lang-toggle" id="langToggleBtn" title="Switch Language (English / ಕನ್ನಡ)" aria-label="Toggle Language">
+          <i class="fa-solid fa-globe"></i>
+          <span id="currentLangLabel" style="font-size: 0.76rem; font-weight: 700; margin-left: 3px;">EN</span>
+        </button>
+
+        <!-- Dark / Light Theme Toggle -->
+        <button class="nav-icon-btn theme-toggle-btn" id="themeToggleBtn" title="Toggle Dark/Light Mode" aria-label="Toggle Theme">
+          <i class="fa-solid fa-moon" id="themeToggleIcon"></i>
+        </button>
+
+        <!-- Notification Bell with Dropdown Menu -->
+        <div class="notif-wrapper" style="position: relative;">
+          <button class="nav-icon-btn" id="notifBellBtn" title="Civic Alerts & Notifications" aria-label="Notifications">
+            <i class="fa-solid fa-bell"></i>
+            <span class="notif-badge" id="notifBadge" style="display: none;">0</span>
+          </button>
+
+          <!-- Notifications Dropdown -->
+          <div class="notif-dropdown" id="notifDropdownMenu">
+            <div class="notif-dropdown-header">
+              <div style="font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
+                <i class="fa-solid fa-bell" style="color: var(--teal-primary);"></i> <span data-i18n="notif_title">Civic Notifications</span>
+              </div>
+              <button class="notif-mark-btn" id="markAllReadBtn" data-i18n="notif_mark_read">Mark read</button>
+            </div>
+            <div class="notif-items-list" id="notifList">
+              <div style="padding: 24px; text-align: center; color: var(--text-muted); font-size: 0.84rem;">
+                <i class="fa-solid fa-spinner fa-spin"></i> Loading alerts...
+              </div>
+            </div>
+            <div style="padding: 10px 16px; background: var(--bg-surface-elevated); border-top: 1px solid var(--border-subtle); text-align: center;">
+              <a href="{{ url_for('admin_complaints') }}" style="font-size: 0.78rem; font-weight: 600; color: var(--teal-primary); text-decoration: none;">
+                <span data-i18n="notif_view_all">View all municipal complaints</span> <i class="fa-solid fa-arrow-right" style="font-size: 0.7rem;"></i>
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <a href="{{ url_for('submit_page') }}" class="btn btn-primary btn-sm">
+          <i class="fa-solid fa-bullhorn"></i> <span data-i18n="btn_report_problem">Report a Problem</span>
+        </a>
+
+        <!-- Mobile Drawer Hamburger -->
+        <button class="mobile-toggle" id="mobileDrawerOpen" aria-label="Open mobile menu">
+          <i class="fa-solid fa-bars"></i>
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Slide-out Mobile Sidebar / Drawer -->
+  <div class="mobile-drawer-backdrop" id="drawerBackdrop"></div>
+  <aside class="mobile-drawer" id="mobileDrawer">
+    <div class="drawer-header">
+      <a href="{{ url_for('home') }}" class="brand">
+        <div class="brand-icon" style="width: 34px; height: 34px; font-size: 1rem;">
+          <i class="fa-solid fa-landmark-dome"></i>
+        </div>
+        <span>Civic<span style="color: var(--teal-primary);">AI</span></span>
+      </a>
+      <button class="drawer-close" id="mobileDrawerClose">&times;</button>
+    </div>
+
+    <!-- Quick controls inside mobile drawer -->
+    <div style="display: flex; gap: 10px; margin-bottom: 16px; padding-bottom: 14px; border-bottom: 1px solid var(--border-subtle);">
+      <button class="btn btn-secondary btn-sm" id="mobileThemeToggleBtn" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px;">
+        <i class="fa-solid fa-moon" id="mobileThemeIcon"></i> <span id="mobileThemeLabel">Dark Mode</span>
+      </button>
+      <button class="btn btn-secondary btn-sm" id="mobileLangToggleBtn" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px;">
+        <i class="fa-solid fa-globe"></i> <span id="mobileLangLabel">ಕನ್ನಡ</span>
+      </button>
+    </div>
+
+    <ul class="drawer-links">
+      <li>
+        <a href="{{ url_for('home') }}" class="drawer-link {% if request.path == '/' %}active{% endif %}">
+          <i class="fa-solid fa-house"></i> <span data-i18n="nav_home">Home</span>
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('submit_page') }}" class="drawer-link {% if request.path == '/submit' %}active{% endif %}">
+          <i class="fa-solid fa-circle-exclamation" style="color: var(--teal-primary);"></i> <span data-i18n="nav_report">Report a Problem</span>
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('track_page') }}" class="drawer-link {% if request.path == '/track' %}active{% endif %}">
+          <i class="fa-solid fa-crosshairs" style="color: var(--blue-primary);"></i> <span data-i18n="nav_track">Track Status</span>
+        </a>
+      </li>
+      <li style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-subtle);">
+        <span class="sidebar-heading" data-i18n="admin_portals">Admin Portals</span>
+      </li>
+      <li>
+        <a href="{{ url_for('admin_dashboard') }}" class="drawer-link {% if request.path == '/admin' or request.path == '/admin/dashboard' %}active{% endif %}">
+          <i class="fa-solid fa-chart-pie"></i> <span data-i18n="nav_dashboard">Admin Dashboard</span>
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('admin_complaints') }}" class="drawer-link {% if request.path == '/admin/complaints' %}active{% endif %}">
+          <i class="fa-solid fa-sliders"></i> <span data-i18n="nav_manage">Manage Complaints</span>
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('settings_page') }}" class="drawer-link {% if request.path == '/settings' %}active{% endif %}">
+          <i class="fa-solid fa-gear"></i> <span data-i18n="nav_settings">Profile & Settings</span>
+        </a>
+      </li>
+    </ul>
+
+    <div style="margin-top: auto; padding-top: 20px; border-top: 1px solid var(--border-subtle);">
+      <a href="{{ url_for('submit_page') }}" class="btn btn-primary" style="width: 100%; margin-bottom: 10px;">
+        <i class="fa-solid fa-bullhorn"></i> <span data-i18n="btn_report_problem">Report a Problem</span>
+      </a>
+      <div style="font-size: 0.76rem; color: var(--text-dim); text-align: center;">
+        <i class="fa-solid fa-shield-halved" style="color: var(--teal-primary);"></i> CivicAI Secure Gateway
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main Application Body -->
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- Modern SaaS Footer -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-content">
+        <div>
+          <div class="brand" style="margin-bottom: 12px;">
+            <div class="brand-icon" style="width: 34px; height: 34px; font-size: 1rem;">
+              <i class="fa-solid fa-landmark-dome"></i>
+            </div>
+            <span>Civic<span style="color: var(--teal-primary);">AI</span></span>
+          </div>
+          <p style="color: var(--text-muted); font-size: 0.88rem; max-width: 380px; line-height: 1.6;" data-i18n="footer_desc">
+            Next-generation citizen grievance redressal powered by transparent NLP prioritization, automated triage, and lifecycle tracking.
+          </p>
+        </div>
+
+        <div>
+          <h4 style="font-size: 0.88rem; color: var(--text-main); margin-bottom: 14px; text-transform: uppercase; letter-spacing: 0.06em;" data-i18n="footer_navigation">Platform Navigation</h4>
+          <ul style="list-style: none; display: flex; flex-direction: column; gap: 9px; font-size: 0.88rem;">
+            <li><a href="{{ url_for('submit_page') }}" style="color: var(--text-muted); text-decoration: none;"><i class="fa-solid fa-angle-right" style="color: var(--teal-primary); font-size: 0.75rem;"></i> <span data-i18n="nav_report">Report a Problem</span></a></li>
+            <li><a href="{{ url_for('track_page') }}" style="color: var(--text-muted); text-decoration: none;"><i class="fa-solid fa-angle-right" style="color: var(--teal-primary); font-size: 0.75rem;"></i> <span data-i18n="nav_track">Track Complaint</span></a></li>
+            <li><a href="{{ url_for('admin_dashboard') }}" style="color: var(--text-muted); text-decoration: none;"><i class="fa-solid fa-angle-right" style="color: var(--teal-primary); font-size: 0.75rem;"></i> <span data-i18n="nav_dashboard">Admin Dashboard</span></a></li>
+            <li><a href="{{ url_for('admin_complaints') }}" style="color: var(--text-muted); text-decoration: none;"><i class="fa-solid fa-angle-right" style="color: var(--teal-primary); font-size: 0.75rem;"></i> <span data-i18n="nav_manage">Manage Complaints</span></a></li>
+            <li><a href="{{ url_for('settings_page') }}" style="color: var(--text-muted); text-decoration: none;"><i class="fa-solid fa-angle-right" style="color: var(--teal-primary); font-size: 0.75rem;"></i> <span data-i18n="nav_settings">Profile & Settings</span></a></li>
+          </ul>
+        </div>
+
+        <div>
+          <h4 style="font-size: 0.88rem; color: var(--text-main); margin-bottom: 14px; text-transform: uppercase; letter-spacing: 0.06em;" data-i18n="footer_ai_standards">Municipal AI Standards</h4>
+          <p style="color: var(--text-dim); font-size: 0.84rem; max-width: 340px; line-height: 1.6;" data-i18n="footer_standards_desc">
+            CivicAI uses verified multi-factor risk assessment, duplicate deduplication, and explainable NLP algorithms. Zero simulated metrics.
+          </p>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <span data-i18n="footer_copyright">&copy; 2026 CivicAI Smart Citizen Complaint Management System. All rights reserved.</span>
+        <span><i class="fa-solid fa-shield-halved" style="color: var(--teal-primary);"></i> <span data-i18n="footer_secure">Secure Municipal Platform</span></span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Universal Confirmation Dialog Modal -->
+  <div class="modal-backdrop" id="confirmModalBackdrop">
+    <div class="modal" style="max-width: 440px; text-align: center; padding: 32px 24px;">
+      <div id="confirmModalIcon" style="font-size: 2.4rem; color: var(--priority-critical); margin-bottom: 14px;">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+      </div>
+      <h3 id="confirmModalTitle" style="font-size: 1.25rem; font-weight: 700; margin-bottom: 8px; color: var(--text-main);">Confirm Action</h3>
+      <p id="confirmModalMessage" style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 24px; line-height: 1.5;">Are you sure you want to proceed with this operation?</p>
+      <div style="display: flex; gap: 12px; justify-content: center;">
+        <button type="button" class="btn btn-secondary" id="confirmModalCancelBtn">Cancel</button>
+        <button type="button" class="btn btn-primary" id="confirmModalOkBtn" style="background: var(--priority-critical); border-color: var(--priority-critical);">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Floating Back to Top Button -->
+  <button class="back-to-top" id="backToTopBtn" aria-label="Back to Top" title="Back to Top">
+    <i class="fa-solid fa-arrow-up"></i>
+  </button>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- Global JavaScript -->
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+  {% block extra_scripts %}{% endblock %}
+</body>
+</html>

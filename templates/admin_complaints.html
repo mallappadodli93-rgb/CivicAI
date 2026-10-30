@@ -1,0 +1,265 @@
+{% extends "base.html" %}
+
+{% block title %}Complaint Management Console - CivicAI{% endblock %}
+
+{% block content %}
+<div class="admin-container">
+  
+  <!-- Responsive Admin Sidebar -->
+  {% include "admin_sidebar.html" %}
+
+  <!-- Main Management Content -->
+  <div class="admin-content">
+    
+    <div class="page-header" style="padding-top: 0; display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 16px;">
+      <div>
+        <div style="font-size: 0.8rem; font-weight: 700; color: var(--teal-primary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px;">
+          <i class="fa-solid fa-sliders"></i> Operations & Triage Console
+        </div>
+        <h1 class="page-header-title">Citizen Grievance Management</h1>
+        <p class="page-header-subtitle">
+          Review AI triage recommendations, update lifecycle statuses, and deploy field repair teams.
+        </p>
+      </div>
+
+      <div style="display: flex; gap: 10px; align-items: center;">
+        <button class="btn btn-secondary btn-sm mobile-toggle" id="complaintsSidebarToggle" style="display: none;">
+          <i class="fa-solid fa-bars-staggered"></i> Sidebar
+        </button>
+        <button class="btn btn-secondary btn-sm" onclick="fetchComplaints()">
+          <i class="fa-solid fa-arrows-rotate"></i> Refresh Table
+        </button>
+        <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline btn-sm">
+          <i class="fa-solid fa-chart-pie"></i> Analytics
+        </a>
+      </div>
+    </div>
+
+    <!-- Filter & Search Controls Bar -->
+    <div class="card" style="margin-bottom: 24px; padding: 20px 24px;">
+      
+      <div style="display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr; gap: 14px; margin-bottom: 16px;" class="filter-controls-grid">
+        <!-- Search -->
+        <div style="position: relative;">
+          <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 16px; top: 15px; color: var(--text-dim);"></i>
+          <input type="text" id="filterSearch" class="form-control" placeholder="Search ID, citizen, street..." style="padding-left: 42px;">
+        </div>
+
+        <!-- Category Filter -->
+        <div>
+          <select id="filterCategory" class="form-control">
+            <option value="All">All Categories</option>
+            <option value="Road Damage">Road Damage</option>
+            <option value="Waterlogging">Waterlogging</option>
+            <option value="Garbage">Garbage</option>
+            <option value="Streetlight">Streetlight</option>
+            <option value="Drainage">Drainage</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+
+        <!-- Priority Filter -->
+        <div>
+          <select id="filterPriority" class="form-control">
+            <option value="All">All Priorities</option>
+            <option value="High">High Priority</option>
+            <option value="Medium">Medium Priority</option>
+            <option value="Low">Low Priority</option>
+          </select>
+        </div>
+
+        <!-- Sort By -->
+        <div>
+          <select id="filterSort" class="form-control">
+            <option value="priority_desc">⚡ Priority: High to Low</option>
+            <option value="priority_asc">Priority: Low to High</option>
+            <option value="newest">🕒 Date: Newest First</option>
+            <option value="oldest">Date: Oldest First</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Status Filter Buttons Bar -->
+      <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+        <span style="font-size: 0.8rem; font-weight: 700; color: var(--text-dim); text-transform: uppercase; margin-right: 4px;">Status:</span>
+        <button class="btn btn-sm btn-outline status-filter-btn active" data-status="All">All</button>
+        <button class="btn btn-sm btn-secondary status-filter-btn" data-status="Submitted">Submitted</button>
+        <button class="btn btn-sm btn-secondary status-filter-btn" data-status="Under Review">Under Review</button>
+        <button class="btn btn-sm btn-secondary status-filter-btn" data-status="Assigned">Assigned</button>
+        <button class="btn btn-sm btn-secondary status-filter-btn" data-status="In Progress">In Progress</button>
+        <button class="btn btn-sm btn-secondary status-filter-btn" data-status="Resolved">Resolved</button>
+      </div>
+
+    </div>
+
+    <!-- Complaints Data Table -->
+    <div class="card" style="padding: 0; overflow: hidden;">
+      <div class="table-responsive">
+        <table class="table" id="complaintsTable">
+          <thead>
+            <tr>
+              <th>Tracking ID</th>
+              <th>Citizen</th>
+              <th>Category & Location</th>
+              <th>Executive AI Summary</th>
+              <th>Priority</th>
+              <th>Status</th>
+              <th style="text-align: right;">Action</th>
+            </tr>
+          </thead>
+          <tbody id="complaintsTableBody">
+            <!-- Populated dynamically via manage.js -->
+          </tbody>
+        </table>
+      </div>
+
+      <div id="tableEmptyState" style="display: none; text-align: center; padding: 48px 20px;">
+        <i class="fa-solid fa-folder-open" style="font-size: 2.2rem; color: var(--text-dim); margin-bottom: 12px; display: block;"></i>
+        <h4 style="font-size: 1.1rem; font-weight: 700;">No Complaints Found</h4>
+        <p style="color: var(--text-muted); font-size: 0.88rem;">Try adjusting your filter or search keywords.</p>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Detail & Triage Action Modal -->
+  <div class="modal-backdrop" id="triageModal">
+    <div class="modal" style="max-width: 880px;">
+      <button class="modal-close" onclick="closeTriageModal()">&times;</button>
+      
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 16px;">
+        <div>
+          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
+            <span style="font-family: monospace; font-size: 1.4rem; font-weight: 800; color: var(--teal-primary);" id="modalTracking">CIV-XXXX</span>
+            <span id="modalStatusBadge" class="badge">--</span>
+            <span id="modalPriorityBadge" class="badge">--</span>
+          </div>
+          <div style="font-size: 0.86rem; color: var(--text-muted);">
+            Reported by <strong id="modalCitizen" style="color: var(--text-main);">--</strong> on <span id="modalDate">--</span>
+          </div>
+        </div>
+
+        <a id="modalCitizenTrackLink" href="#" target="_blank" class="btn btn-outline btn-sm">
+          Citizen View <i class="fa-solid fa-arrow-up-right-from-square"></i>
+        </a>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1.15fr 0.85fr; gap: 24px;" class="modal-layout">
+        
+        <!-- Left Column: Details & AI Telemetry -->
+        <div>
+          <div style="margin-bottom: 18px;">
+            <div style="font-size: 0.78rem; font-weight: 700; color: var(--text-dim); text-transform: uppercase; margin-bottom: 6px;">Incident Description</div>
+            <p id="modalDesc" style="font-size: 0.92rem; line-height: 1.5; color: var(--text-main); background: rgba(255,255,255,0.02); padding: 12px; border-radius: var(--radius-md); border: 1px solid var(--border-subtle);"></p>
+          </div>
+
+          <div style="display: flex; gap: 14px; font-size: 0.84rem; margin-bottom: 18px;">
+            <div><i class="fa-solid fa-location-dot" style="color: var(--teal-primary);"></i> <span id="modalLoc" style="color: var(--text-main);">--</span></div>
+            <div><i class="fa-solid fa-tag" style="color: var(--blue-primary);"></i> <span id="modalCat" style="color: var(--text-main);">--</span></div>
+          </div>
+
+          <!-- Photo if available -->
+          <div id="modalPhotoWrap" style="display: none; margin-bottom: 18px;">
+            <div style="font-size: 0.78rem; font-weight: 700; color: var(--text-dim); text-transform: uppercase; margin-bottom: 6px;">Attached Citizen Photo</div>
+            <a id="modalPhotoLink" href="#" target="_blank">
+              <img id="modalPhoto" src="" alt="Complaint photo" style="max-height: 180px; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); object-fit: cover;">
+            </a>
+          </div>
+
+          <!-- AI Diagnostic Box -->
+          <div class="ai-panel" style="padding: 16px; margin-bottom: 20px;">
+            <div style="font-size: 0.76rem; font-weight: 700; color: var(--teal-primary); text-transform: uppercase; margin-bottom: 8px;">
+              <i class="fa-solid fa-brain"></i> CivicAI Intelligence Assessment
+            </div>
+            <div id="modalAiExpl" style="font-size: 0.84rem; color: var(--text-muted); line-height: 1.4; margin-bottom: 8px;">--</div>
+            <div id="modalDuplicateFlag" style="font-size: 0.82rem; color: var(--priority-high); display: none;"></div>
+          </div>
+
+          <!-- Audit Log Snippet -->
+          <div>
+            <div style="font-size: 0.78rem; font-weight: 700; color: var(--text-dim); text-transform: uppercase; margin-bottom: 8px;">Audit History</div>
+            <div id="modalLogList" style="max-height: 160px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; font-size: 0.82rem;">
+              <!-- Populated via JS -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Column: Administrative Triage Controls -->
+        <div style="background: var(--bg-surface-elevated); padding: 20px; border-radius: var(--radius-lg); border: 1px solid var(--border-subtle);">
+          <h3 style="font-size: 1.05rem; font-weight: 700; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+            <i class="fa-solid fa-user-gear" style="color: var(--teal-primary);"></i> Triage Actions
+          </h3>
+
+          <form id="triageActionForm">
+            <input type="hidden" id="triageComplaintId">
+
+            <div class="form-group">
+              <label class="form-label" for="triageStatusSelect">Update Status</label>
+              <select id="triageStatusSelect" class="form-control">
+                <option value="Submitted">Submitted</option>
+                <option value="Under Review">Under Review</option>
+                <option value="Assigned">Assigned</option>
+                <option value="In Progress">In Progress</option>
+                <option value="Resolved">Resolved</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="triageDeptSelect">Department</label>
+              <select id="triageDeptSelect" class="form-control">
+                <option value="Department of Roads & Infrastructure">Department of Roads & Infrastructure</option>
+                <option value="Stormwater & Flood Management Division">Stormwater & Flood Management Division</option>
+                <option value="Solid Waste & Sanitation Department">Solid Waste & Sanitation Department</option>
+                <option value="Public Lighting & Electrical Works">Public Lighting & Electrical Works</option>
+                <option value="Water Supply & Sewerage Board">Water Supply & Sewerage Board</option>
+                <option value="General Municipal Administration">General Municipal Administration</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="triageOfficerInput">Assign Field Officer</label>
+              <input type="text" id="triageOfficerInput" class="form-control" placeholder="e.g. Officer Anita Roy">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="triageNoteInput">Official Action Note</label>
+              <textarea id="triageNoteInput" class="form-control" rows="3" placeholder="e.g. Dispatched technician team to repair wire..."></textarea>
+            </div>
+
+            <button type="submit" id="saveTriageBtn" class="btn btn-primary" style="width: 100%;">
+              <i class="fa-solid fa-floppy-disk"></i> Save & Apply Changes
+            </button>
+          </form>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/manage.js') }}"></script>
+<style>
+@media (max-width: 992px) {
+  #complaintsSidebarToggle {
+    display: inline-flex !important;
+  }
+}
+@media (max-width: 900px) {
+  .filter-controls-grid {
+    grid-template-columns: 1fr 1fr !important;
+  }
+  .modal-layout {
+    grid-template-columns: 1fr !important;
+  }
+}
+@media (max-width: 600px) {
+  .filter-controls-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+</style>
+{% endblock %}

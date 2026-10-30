@@ -1,0 +1,281 @@
+{% extends "base.html" %}
+
+{% block title %}File a Civic Complaint - CivicAI{% endblock %}
+
+{% block content %}
+<div class="container">
+  
+  <div class="page-header">
+    <div style="display: inline-flex; align-items: center; gap: 8px; background: rgba(0, 229, 188, 0.1); border: 1px solid var(--border-accent); padding: 6px 16px; border-radius: 30px; font-size: 0.82rem; font-weight: 700; color: var(--teal-primary); margin-bottom: 14px;">
+      <i class="fa-solid fa-circle-exclamation"></i> Citizen Grievance Redressal
+    </div>
+    <h1 class="page-header-title">Report a Problem</h1>
+    <p class="page-header-subtitle">
+      Report municipal infrastructure, sanitation, road or electrical hazards. CivicAI evaluates urgency in real-time and routes your request to the appropriate municipal department.
+    </p>
+  </div>
+
+  <div style="display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 32px; align-items: start;" class="submit-layout">
+    
+    <!-- Left Column: Form -->
+    <div class="card">
+      <div class="card-header">
+        <h2 class="card-title">
+          <i class="fa-solid fa-pen-to-square" style="color: var(--teal-primary);"></i> Complaint Details
+        </h2>
+        <span style="font-size: 0.82rem; color: var(--text-dim);"><span class="required">*</span> Required fields</span>
+      </div>
+
+      <form id="complaintForm" enctype="multipart/form-data">
+        
+        <div class="form-group">
+          <label class="form-label" for="citizenName">Full Name <span class="required">*</span></label>
+          <input type="text" id="citizenName" name="citizen_name" class="form-control" placeholder="e.g. Sumanth Narayana" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="categorySelect">Grievance Category</label>
+          <select id="categorySelect" name="category" class="form-control">
+            <option value="Auto-Detect">✨ Auto-Detect with AI</option>
+            <option value="Road Damage">Road Damage</option>
+            <option value="Waterlogging">Waterlogging</option>
+            <option value="Garbage">Garbage</option>
+            <option value="Streetlight">Streetlight</option>
+            <option value="Drainage">Drainage</option>
+            <option value="Other">Other</option>
+          </select>
+          <div class="form-hint"><i class="fa-solid fa-robot"></i> AI will categorize automatically if left as Auto-Detect.</div>
+        </div>
+
+        <!-- Compulsory Location & Geolocation Section -->
+        <div class="form-group">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; flex-wrap: wrap; gap: 8px;">
+            <label class="form-label" for="locationInput" style="margin-bottom: 0;">
+              Incident Location & Coordinates <span class="required">*</span>
+            </label>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <button type="button" id="useGpsBtn" class="btn btn-secondary btn-sm" style="font-size: 0.78rem; padding: 4px 10px;">
+                <i class="fa-solid fa-location-crosshairs" style="color: var(--teal-primary);"></i> Use My Current GPS Location
+              </button>
+              <button type="button" id="searchAddressBtn" class="btn btn-outline btn-sm" style="font-size: 0.78rem; padding: 4px 10px;">
+                <i class="fa-solid fa-magnifying-glass-location"></i> Find Address
+              </button>
+            </div>
+          </div>
+
+          <input type="text" id="locationInput" name="location" class="form-control" placeholder="e.g. 5th Main, Indiranagar, Ward 12 or click on the map..." required>
+          
+          <div class="form-hint" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 4px; margin-top: 4px;">
+            <span><i class="fa-solid fa-map-pin"></i> Select exact spot on map or click 'Use My Current GPS Location'.</span>
+            <span id="coordBadge" style="font-family: monospace; font-weight: 700; color: var(--priority-critical);">
+              <i class="fa-solid fa-circle-exclamation"></i> Pin not placed yet (Required)
+            </span>
+          </div>
+
+          <!-- Hidden compulsory coordinates submitted to backend -->
+          <input type="hidden" id="latitudeInput" name="latitude" required>
+          <input type="hidden" id="longitudeInput" name="longitude" required>
+
+          <!-- Interactive Location Picker Map -->
+          <div style="margin-top: 10px; border-radius: var(--radius-md); overflow: hidden; border: 1px solid var(--border-subtle); position: relative;">
+            <div id="submitPickerMap" style="height: 250px; width: 100%;"></div>
+            <div style="position: absolute; bottom: 8px; left: 8px; z-index: 1000; background: rgba(6, 11, 25, 0.85); backdrop-filter: blur(4px); padding: 4px 10px; border-radius: var(--radius-sm); font-size: 0.72rem; color: var(--text-muted); border: 1px solid var(--border-subtle);">
+              <i class="fa-solid fa-hand-pointer" style="color: var(--teal-primary);"></i> Click or drag pin to select location. Saved location reflects reported spot, not live tracking.
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="descriptionInput">
+            Detailed Description <span class="required">*</span>
+          </label>
+          <textarea id="descriptionInput" name="description" class="form-control" rows="5" 
+                    placeholder="Describe the problem clearly (e.g. Live electrical wire hanging dangerously from a sparked pole outside the primary school gate...)" required></textarea>
+          <div style="display: flex; justify-content: space-between; margin-top: 6px; font-size: 0.8rem; color: var(--text-dim);">
+            <span><i class="fa-solid fa-lightbulb"></i> Minimum 10 characters to trigger AI preview</span>
+            <span id="charCount">0 characters</span>
+          </div>
+        </div>
+
+        <!-- Optional Image Upload -->
+        <div class="form-group">
+          <label class="form-label">
+            Attach Photo Proof <span style="font-weight: 400; color: var(--text-dim);">(Optional)</span>
+          </label>
+          
+          <div class="file-dropzone" id="fileDropzone">
+            <div class="dropzone-icon">
+              <i class="fa-solid fa-cloud-arrow-up"></i>
+            </div>
+            <div style="font-weight: 600; font-size: 0.92rem; margin-bottom: 4px;">Click to upload or drag photo here</div>
+            <div style="font-size: 0.8rem; color: var(--text-dim);">Supports JPG, PNG, WEBP (Max 16 MB)</div>
+            <input type="file" id="imageInput" name="image" accept="image/*">
+          </div>
+
+          <div class="file-preview" id="filePreview">
+            <img id="previewImg" src="" alt="Photo preview">
+            <div style="flex: 1; overflow: hidden;">
+              <div id="previewName" style="font-size: 0.86rem; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; overflow: hidden;"></div>
+              <div id="previewSize" style="font-size: 0.76rem; color: var(--text-dim);"></div>
+            </div>
+            <button type="button" id="removeFileBtn" class="btn btn-outline btn-sm" style="color: var(--priority-critical); border-color: rgba(239, 68, 68, 0.3);">
+              <i class="fa-solid fa-trash"></i>
+            </button>
+          </div>
+        </div>
+
+        <div style="margin-top: 28px; display: flex; gap: 14px;">
+          <button type="submit" id="submitBtn" class="btn btn-primary btn-lg" style="flex: 1;">
+            <i class="fa-solid fa-paper-plane"></i> Submit Complaint
+          </button>
+        </div>
+
+      </form>
+    </div>
+
+    <!-- Right Column: AI Live Triage Radar -->
+    <div>
+      <div class="ai-panel">
+        <div class="ai-badge-header">
+          <div class="ai-indicator">
+            <span class="ai-pulse-dot"></span>
+            <span>CivicAI Live Triage Radar</span>
+          </div>
+          <span style="font-size: 0.72rem; color: var(--text-dim);"><i class="fa-solid fa-bolt"></i> Real-time</span>
+        </div>
+
+        <p style="font-size: 0.84rem; color: var(--text-muted); margin-bottom: 18px;">
+          As you type your description, CivicAI's NLP pipeline continuously evaluates domain taxonomy, safety risk, and duplication.
+        </p>
+
+        <!-- Initial Placeholder State -->
+        <div id="aiEmptyState" style="text-align: center; padding: 32px 16px; border: 1px dashed var(--border-subtle); border-radius: var(--radius-md);">
+          <i class="fa-solid fa-microchip" style="font-size: 2.2rem; color: var(--text-dim); margin-bottom: 12px; display: block;"></i>
+          <p style="font-size: 0.88rem; color: var(--text-dim);">
+            Start typing your complaint description to see instant categorization, priority scoring, and duplicate detection.
+          </p>
+        </div>
+
+        <!-- Live AI Data Container (Hidden until user types) -->
+        <div id="aiLiveState" style="display: none;">
+          
+          <!-- Predicted Category -->
+          <div class="ai-item">
+            <div class="ai-item-title"><i class="fa-solid fa-tags"></i> AI Identified Category</div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <span id="aiCategoryName" style="font-weight: 700; color: var(--teal-primary); font-size: 0.95rem;">--</span>
+              <span id="aiConfidenceScore" style="font-size: 0.78rem; font-weight: 600; color: var(--text-muted);">0% confidence</span>
+            </div>
+            <div class="progress-bar-container">
+              <div id="aiConfidenceBar" class="progress-bar-fill" style="width: 0%; background: var(--teal-primary);"></div>
+            </div>
+            <div id="aiCategoryReason" style="font-size: 0.8rem; color: var(--text-muted); margin-top: 8px;"></div>
+          </div>
+
+          <!-- Suggested Routing Department -->
+          <div class="ai-item">
+            <div class="ai-item-title"><i class="fa-solid fa-building-user"></i> Target Dispatch Department</div>
+            <div id="aiDepartment" style="font-size: 0.9rem; font-weight: 600; color: var(--text-main);">--</div>
+          </div>
+
+          <!-- AI Priority Score -->
+          <div class="ai-item">
+            <div class="ai-item-title"><i class="fa-solid fa-gauge-high"></i> Evaluated Priority Level</div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <span id="aiPriorityBadge" class="badge">--</span>
+              <span id="aiPriorityScore" style="font-weight: 800; font-size: 1.1rem;">0 / 100</span>
+            </div>
+            <div class="progress-bar-container">
+              <div id="aiPriorityBar" class="progress-bar-fill" style="width: 0%; background: var(--teal-primary);"></div>
+            </div>
+            <div id="aiPriorityReason" style="font-size: 0.8rem; color: var(--text-muted); margin-top: 8px; line-height: 1.4;"></div>
+          </div>
+
+          <!-- AI Generated Executive Summary -->
+          <div class="ai-item">
+            <div class="ai-item-title"><i class="fa-solid fa-file-lines"></i> Executive Officer Briefing</div>
+            <p id="aiSummaryText" style="font-size: 0.85rem; color: var(--text-muted); font-style: italic; background: rgba(255,255,255,0.03); padding: 10px; border-radius: var(--radius-sm); border-left: 3px solid var(--teal-primary);">
+              --
+            </p>
+          </div>
+
+          <!-- Duplicate Warning Banner -->
+          <div id="duplicateAlertBox" class="duplicate-alert" style="display: none;">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            <div>
+              <div style="font-weight: 700; font-size: 0.86rem; color: var(--status-under-review); margin-bottom: 4px;">Potential Duplicate Notice</div>
+              <div id="duplicateAlertText" style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.4;"></div>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Submission Success Modal -->
+  <div class="modal-backdrop" id="successModal">
+    <div class="modal" style="text-align: center; max-width: 540px;">
+      <div style="width: 64px; height: 64px; background: rgba(0, 229, 188, 0.15); color: var(--teal-primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; margin: 0 auto 20px;">
+        <i class="fa-solid fa-circle-check"></i>
+      </div>
+
+      <h2 style="font-size: 1.6rem; font-weight: 800; margin-bottom: 8px;">Complaint Registered!</h2>
+      <p style="color: var(--text-muted); font-size: 0.92rem; margin-bottom: 24px;">
+        Your grievance has been successfully analyzed by CivicAI and routed for departmental action.
+      </p>
+
+      <!-- Tracking ID Display Box -->
+      <div style="background: var(--bg-surface-elevated); border: 1px solid var(--border-accent); border-radius: var(--radius-md); padding: 16px; margin-bottom: 24px;">
+        <span style="font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-dim); display: block; margin-bottom: 4px;">Your Official Tracking ID</span>
+        <div style="display: flex; align-items: center; justify-content: center; gap: 10px;">
+          <span id="modalTrackingId" style="font-family: monospace; font-size: 1.5rem; font-weight: 800; color: var(--teal-primary);">
+            CIV-2026-XXXXX
+          </span>
+          <button id="copyTrackBtn" class="btn btn-outline btn-sm" title="Copy to clipboard">
+            <i class="fa-regular fa-copy"></i>
+          </button>
+        </div>
+      </div>
+
+      <div style="text-align: left; background: rgba(255,255,255,0.02); border-radius: var(--radius-sm); padding: 14px; font-size: 0.84rem; margin-bottom: 24px;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+          <span style="color: var(--text-muted);">Assigned Priority:</span>
+          <span id="modalPriority" class="badge">--</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+          <span style="color: var(--text-muted);">Dispatch Department:</span>
+          <span id="modalDepartment" style="font-weight: 600; color: var(--text-main);">--</span>
+        </div>
+        <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border-subtle); color: var(--text-muted);">
+          <strong style="color: var(--text-main);">Summary:</strong> <span id="modalSummary">--</span>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 12px; justify-content: center;">
+        <a id="trackLinkBtn" href="/track" class="btn btn-primary" style="flex: 1;">
+          <i class="fa-solid fa-crosshairs"></i> Track Live Status
+        </a>
+        <button onclick="window.location.reload()" class="btn btn-secondary">
+          File Another
+        </button>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/submit.js') }}"></script>
+<style>
+@media (max-width: 960px) {
+  .submit-layout {
+    grid-template-columns: 1fr !important;
+  }
+}
+</style>
+{% endblock %}
+

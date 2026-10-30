@@ -1,0 +1,86 @@
+<!-- CivicAI Responsive Admin Sidebar Navigation -->
+<aside class="admin-sidebar" id="adminSidebar">
+  
+  <div>
+    <div class="sidebar-heading">Admin Portals</div>
+    <ul class="sidebar-menu">
+      <li class="sidebar-menu-item {% if request.path == '/admin' or request.path == '/admin/dashboard' %}active{% endif %}">
+        <a href="{{ url_for('admin_dashboard') }}">
+          <span><i class="fa-solid fa-chart-pie" style="color: var(--teal-primary); width: 20px;"></i> Analytics Dashboard</span>
+        </a>
+      </li>
+      <li class="sidebar-menu-item {% if request.path == '/admin/complaints' %}active{% endif %}">
+        <a href="{{ url_for('admin_complaints') }}">
+          <span><i class="fa-solid fa-sliders" style="color: var(--blue-primary); width: 20px;"></i> Manage Complaints</span>
+        </a>
+      </li>
+      <li class="sidebar-menu-item {% if request.path == '/settings' %}active{% endif %}">
+        <a href="{{ url_for('settings_page') }}">
+          <span><i class="fa-solid fa-gear" style="color: var(--teal-primary); width: 20px;"></i> System Settings</span>
+        </a>
+      </li>
+    </ul>
+  </div>
+
+  <div>
+    <div class="sidebar-heading">Quick Triage Filters</div>
+    <ul class="sidebar-menu">
+      <li class="sidebar-menu-item">
+        <a href="{{ url_for('admin_complaints', priority='Critical') }}">
+          <span><i class="fa-solid fa-triangle-exclamation" style="color: var(--priority-critical); width: 20px;"></i> Critical Alerts</span>
+          <span class="badge badge-priority-critical" style="font-size: 0.7rem; padding: 2px 7px;">URGENT</span>
+        </a>
+      </li>
+      <li class="sidebar-menu-item">
+        <a href="{{ url_for('admin_complaints', status='In Progress') }}">
+          <span><i class="fa-solid fa-screwdriver-wrench" style="color: var(--status-in-progress); width: 20px;"></i> In Progress</span>
+        </a>
+      </li>
+      <li class="sidebar-menu-item">
+        <a href="{{ url_for('admin_complaints', status='Submitted') }}">
+          <span><i class="fa-solid fa-clock" style="color: var(--status-submitted); width: 20px;"></i> Pending Review</span>
+        </a>
+      </li>
+      <li class="sidebar-menu-item">
+        <a href="{{ url_for('admin_complaints', status='Resolved') }}">
+          <span><i class="fa-solid fa-circle-check" style="color: var(--status-resolved); width: 20px;"></i> Resolved Cases</span>
+        </a>
+      </li>
+    </ul>
+  </div>
+
+  <div>
+    <div class="sidebar-heading">Public Portals</div>
+    <ul class="sidebar-menu">
+      <li class="sidebar-menu-item">
+        <a href="{{ url_for('submit_page') }}">
+          <span><i class="fa-solid fa-circle-exclamation" style="color: var(--teal-primary); width: 20px;"></i> Report a Problem</span>
+        </a>
+      </li>
+      <li class="sidebar-menu-item">
+        <a href="{{ url_for('track_page') }}">
+          <span><i class="fa-solid fa-crosshairs" style="color: var(--blue-primary); width: 20px;"></i> Citizen Tracker</span>
+        </a>
+      </li>
+      <li class="sidebar-menu-item">
+        <a href="{{ url_for('home') }}">
+          <span><i class="fa-solid fa-house" style="color: var(--text-dim); width: 20px;"></i> Public Home</span>
+        </a>
+      </li>
+    </ul>
+  </div>
+
+  <!-- AI System Status Card -->
+  <div style="margin-top: auto; padding: 16px; background: var(--bg-surface-elevated); border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
+    <div style="display: flex; align-items: center; gap: 8px; font-size: 0.78rem; font-weight: 700; color: var(--teal-primary); margin-bottom: 6px;">
+      <span class="ai-pulse-dot"></span> CivicAI Core Engine
+    </div>
+    <div style="font-size: 0.74rem; color: var(--text-muted); line-height: 1.5;">
+      NLP Categorization: <strong style="color: var(--teal-primary);">Active</strong><br>
+      Duplicate Triage: <strong style="color: var(--blue-primary);">Online</strong><br>
+      Priority Scorer: <strong style="color: var(--teal-primary);">Active</strong>
+    </div>
+  </div>
+
+</aside>
+

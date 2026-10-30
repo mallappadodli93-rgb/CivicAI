@@ -1,0 +1,327 @@
+{% extends "base.html" %}
+
+{% block title %}CivicAI - Smart Citizen Complaint Management System{% endblock %}
+
+{% block content %}
+<div class="container" style="padding-top: 24px; padding-bottom: 60px;">
+  
+  <!-- Hero Section -->
+  <section style="padding: 56px 0 40px; text-align: center; max-width: 900px; margin: 0 auto; position: relative;">
+    
+    <!-- AI Status Floating Pill -->
+    <div style="display: inline-flex; align-items: center; gap: 8px; background: rgba(0, 229, 188, 0.1); border: 1px solid var(--border-accent); padding: 8px 20px; border-radius: 30px; font-size: 0.84rem; font-weight: 700; color: var(--teal-primary); margin-bottom: 24px; box-shadow: 0 4px 14px rgba(0, 229, 188, 0.15);">
+      <span class="ai-pulse-dot"></span>
+      <span data-i18n="hero_badge">AI-Powered Grievance Redressal</span>
+      <span style="opacity: 0.5;">|</span>
+      <span style="font-size: 0.78rem; color: var(--text-muted);"><i class="fa-solid fa-bolt"></i> Real-time NLP Triage</span>
+    </div>
+
+    <!-- Main Gradient Heading -->
+    <h1 style="font-size: clamp(2.4rem, 5vw, 3.4rem); font-weight: 800; line-height: 1.15; letter-spacing: -0.04em; margin-bottom: 20px; color: var(--text-main);">
+      <span data-i18n="hero_title_1">Smart Citizen Grievance</span><br>
+      <span style="background: linear-gradient(135deg, var(--teal-primary) 0%, var(--blue-primary) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;" data-i18n="hero_title_2">
+        Resolution Platform
+      </span>
+    </h1>
+
+    <p style="color: var(--text-muted); font-size: 1.12rem; margin-bottom: 34px; line-height: 1.65; max-width: 740px; margin-left: auto; margin-right: auto;" data-i18n="hero_subtitle">
+      Report potholes, broken water mains, power cuts, hazardous open manholes, or sanitation overflows. CivicAI automatically prioritizes urgency, prevents duplicates, and routes issues directly to field crews.
+    </p>
+
+    <!-- Quick Track Search Box -->
+    <div style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); padding: 8px 10px; max-width: 600px; margin: 0 auto 34px; display: flex; gap: 10px; box-shadow: var(--shadow-md); transition: var(--transition);" class="hover-lift">
+      <div style="display: flex; align-items: center; padding-left: 12px; color: var(--teal-primary); font-size: 1.15rem;">
+        <i class="fa-solid fa-magnifying-glass"></i>
+      </div>
+      <input type="text" id="quickTrackInput" placeholder="Enter Tracking ID (e.g. CIV-2026-SYN01)..." 
+             aria-label="Tracking ID"
+             style="flex: 1; background: transparent; border: none; color: var(--text-main); font-size: 0.98rem; outline: none; font-family: inherit;">
+      <button class="btn btn-primary" onclick="handleQuickTrack()" id="quickTrackBtn" style="padding: 10px 22px; font-weight: 700;">
+        <i class="fa-solid fa-arrow-right"></i> <span data-i18n="hero_btn_track">Track</span>
+      </button>
+    </div>
+
+    <!-- Quick Action CTAs -->
+    <div style="display: flex; justify-content: center; gap: 14px; flex-wrap: wrap;">
+      <a href="{{ url_for('submit_page') }}" class="btn btn-primary btn-lg" style="font-size: 1.05rem; padding: 14px 28px; box-shadow: 0 4px 18px var(--teal-glow);">
+        <i class="fa-solid fa-circle-exclamation"></i> <span data-i18n="hero_btn_report">Report a Problem</span>
+      </a>
+      <a href="{{ url_for('track_page') }}" class="btn btn-secondary btn-lg" style="font-size: 1.05rem; padding: 14px 28px;">
+        <i class="fa-solid fa-crosshairs"></i> <span data-i18n="nav_track">Track Status</span>
+      </a>
+      <a href="{{ url_for('admin_dashboard') }}" class="btn btn-blue btn-lg" style="font-size: 1.05rem; padding: 14px 28px;">
+        <i class="fa-solid fa-chart-pie"></i> <span data-i18n="hero_btn_admin">Admin Console</span>
+      </a>
+    </div>
+
+  </section>
+
+  <!-- Modern Statistics Grid -->
+  <section style="margin: 28px 0 52px;">
+    <div class="stat-grid">
+      
+      <!-- Total Complaints -->
+      <div class="stat-card stat-total hover-lift">
+        <div class="stat-icon blue">
+          <i class="fa-solid fa-layer-group"></i>
+        </div>
+        <div class="stat-info">
+          <div class="stat-value">{{ stats.total }}</div>
+          <div class="stat-label" data-i18n="stat_total">Total Grievances</div>
+        </div>
+      </div>
+
+      <!-- Pending / Under Review -->
+      <div class="stat-card stat-pending hover-lift">
+        <div class="stat-icon orange">
+          <i class="fa-solid fa-hourglass-half"></i>
+        </div>
+        <div class="stat-info">
+          <div class="stat-value">{{ stats.pending }}</div>
+          <div class="stat-label" data-i18n="status_under_review">Pending Review</div>
+        </div>
+      </div>
+
+      <!-- Resolved Complaints -->
+      <div class="stat-card stat-resolved hover-lift">
+        <div class="stat-icon green">
+          <i class="fa-solid fa-circle-check"></i>
+        </div>
+        <div class="stat-info">
+          <div class="stat-value">{{ stats.resolved }}</div>
+          <div class="stat-label" data-i18n="stat_resolved">Resolved Cases</div>
+        </div>
+      </div>
+
+      <!-- Urgent High Priority Complaints -->
+      <div class="stat-card stat-urgent hover-lift urgent-highlight">
+        <div class="stat-icon red">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+        </div>
+        <div class="stat-info">
+          <div class="stat-value">{{ stats.urgent }}</div>
+          <div class="stat-label" data-i18n="stat_urgent">High Risk Alerts</div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Civic Issue Categories Bar -->
+  <section style="margin-bottom: 56px;">
+    <div style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); padding: 24px; box-shadow: var(--shadow-sm);">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 8px;">
+        <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
+          <i class="fa-solid fa-shapes" style="color: var(--teal-primary);"></i> Municipal Problem Categories
+        </div>
+        <span style="font-size: 0.8rem; color: var(--text-muted);">Click any category to initiate a fast report</span>
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px;">
+        <a href="{{ url_for('submit_page') }}" class="category-pill hover-lift" style="text-decoration: none;">
+          <div class="category-pill-icon" style="color: #f59e0b; background: rgba(245, 158, 11, 0.12);"><i class="fa-solid fa-road"></i></div>
+          <div style="font-weight: 600; font-size: 0.86rem; color: var(--text-main);" data-i18n="cat_road">Road Damage</div>
+        </a>
+
+        <a href="{{ url_for('submit_page') }}" class="category-pill hover-lift" style="text-decoration: none;">
+          <div class="category-pill-icon" style="color: #0ea5e9; background: rgba(14, 165, 233, 0.12);"><i class="fa-solid fa-water"></i></div>
+          <div style="font-weight: 600; font-size: 0.86rem; color: var(--text-main);" data-i18n="cat_waterlog">Waterlogging</div>
+        </a>
+
+        <a href="{{ url_for('submit_page') }}" class="category-pill hover-lift" style="text-decoration: none;">
+          <div class="category-pill-icon" style="color: #10b981; background: rgba(16, 185, 129, 0.12);"><i class="fa-solid fa-trash-can"></i></div>
+          <div style="font-weight: 600; font-size: 0.86rem; color: var(--text-main);" data-i18n="cat_garbage">Garbage & Waste</div>
+        </a>
+
+        <a href="{{ url_for('submit_page') }}" class="category-pill hover-lift" style="text-decoration: none;">
+          <div class="category-pill-icon" style="color: #eab308; background: rgba(234, 179, 8, 0.12);"><i class="fa-solid fa-lightbulb"></i></div>
+          <div style="font-weight: 600; font-size: 0.86rem; color: var(--text-main);" data-i18n="cat_light">Street Lighting</div>
+        </a>
+
+        <a href="{{ url_for('submit_page') }}" class="category-pill hover-lift" style="text-decoration: none;">
+          <div class="category-pill-icon" style="color: #a855f7; background: rgba(168, 85, 247, 0.12);"><i class="fa-solid fa-faucet-drip"></i></div>
+          <div style="font-weight: 600; font-size: 0.86rem; color: var(--text-main);" data-i18n="cat_drain">Stormwater Drainage</div>
+        </a>
+
+        <a href="{{ url_for('submit_page') }}" class="category-pill hover-lift" style="text-decoration: none;">
+          <div class="category-pill-icon" style="color: #06b6d4; background: rgba(6, 182, 212, 0.12);"><i class="fa-solid fa-layer-group"></i></div>
+          <div style="font-weight: 600; font-size: 0.86rem; color: var(--text-main);" data-i18n="cat_other">Civic Utilities</div>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- How CivicAI Works Section -->
+  <section style="margin: 56px 0 68px;">
+    <div style="text-align: center; margin-bottom: 38px;">
+      <div style="font-size: 0.82rem; font-weight: 700; color: var(--teal-primary); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px;">End-to-End Governance</div>
+      <h2 style="font-size: 1.95rem; font-weight: 800; letter-spacing: -0.02em; color: var(--text-main);">How CivicAI Works</h2>
+      <p style="color: var(--text-muted); font-size: 0.98rem; max-width: 600px; margin: 0 auto;">Transparent 4-stage municipal workflow from citizen alert to verified resolution</p>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 24px;">
+      
+      <div class="card hover-lift" style="text-align: center; padding: 32px 22px;">
+        <div style="width: 58px; height: 58px; background: rgba(0, 229, 188, 0.12); color: var(--teal-primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; margin: 0 auto 18px; border: 1px solid var(--border-accent);">
+          <i class="fa-solid fa-pen-to-square"></i>
+        </div>
+        <h3 style="font-size: 1.12rem; font-weight: 700; margin-bottom: 8px; color: var(--text-main);">1. Report Issue</h3>
+        <p style="color: var(--text-muted); font-size: 0.86rem; line-height: 1.6;">
+          Citizens describe the problem, specify locality, and attach optional photographic evidence from desktop or mobile.
+        </p>
+      </div>
+
+      <div class="card hover-lift" style="text-align: center; padding: 32px 22px;">
+        <div style="width: 58px; height: 58px; background: rgba(14, 165, 233, 0.12); color: var(--blue-primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; margin: 0 auto 18px; border: 1px solid var(--border-blue);">
+          <i class="fa-solid fa-brain"></i>
+        </div>
+        <h3 style="font-size: 1.12rem; font-weight: 700; margin-bottom: 8px; color: var(--text-main);">2. AI Real-time Triage</h3>
+        <p style="color: var(--text-muted); font-size: 0.86rem; line-height: 1.6;">
+          Our NLP engine analyzes severity (1-100 score), eliminates duplicates, categorizes the grievance, and creates an executive briefing.
+        </p>
+      </div>
+
+      <div class="card hover-lift" style="text-align: center; padding: 32px 22px;">
+        <div style="width: 58px; height: 58px; background: rgba(168, 85, 247, 0.12); color: var(--status-assigned); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; margin: 0 auto 18px; border: 1px solid rgba(168, 85, 247, 0.25);">
+          <i class="fa-solid fa-truck-fast"></i>
+        </div>
+        <h3 style="font-size: 1.12rem; font-weight: 700; margin-bottom: 8px; color: var(--text-main);">3. Field Routing</h3>
+        <p style="color: var(--text-muted); font-size: 0.86rem; line-height: 1.6;">
+          Automatically assigned to municipal departments (Power, Water, Roads, Sanitation, Safety) with officer deployment.
+        </p>
+      </div>
+
+      <div class="card hover-lift" style="text-align: center; padding: 32px 22px;">
+        <div style="width: 58px; height: 58px; background: rgba(16, 185, 129, 0.12); color: var(--status-resolved); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; margin: 0 auto 18px; border: 1px solid rgba(16, 185, 129, 0.25);">
+          <i class="fa-solid fa-circle-check"></i>
+        </div>
+        <h3 style="font-size: 1.12rem; font-weight: 700; margin-bottom: 8px; color: var(--text-main);">4. Verified Resolution</h3>
+        <p style="color: var(--text-muted); font-size: 0.86rem; line-height: 1.6;">
+          Citizens follow progress through 5 clear stages with a chronological audit trail from submission to resolution.
+        </p>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Recent Live Reports Feed -->
+  <section style="margin: 36px 0 20px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 22px; flex-wrap: wrap; gap: 12px;">
+      <div>
+        <h2 style="font-size: 1.55rem; font-weight: 800; color: var(--text-main);">Recent Municipal Activity</h2>
+        <p style="color: var(--text-muted); font-size: 0.88rem;">Live citizen reports actively triaged in the city</p>
+      </div>
+      <div style="display: flex; gap: 10px;">
+        <a href="{{ url_for('submit_page') }}" class="btn btn-primary btn-sm">
+          <i class="fa-solid fa-circle-exclamation"></i> <span data-i18n="btn_report_problem">Report a Problem</span>
+        </a>
+        <a href="{{ url_for('admin_complaints') }}" class="btn btn-secondary btn-sm">
+          <span>Manage</span> <i class="fa-solid fa-arrow-right"></i>
+        </a>
+      </div>
+    </div>
+
+    {% if recent_complaints and recent_complaints|length > 0 %}
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 20px;">
+      {% for comp in recent_complaints %}
+      <div class="card hover-lift {% if comp.ai_priority_level == 'High' or comp.ai_priority_level == 'Critical' %}urgent-highlight{% endif %}" style="display: flex; flex-direction: column; justify-content: space-between;">
+        
+        <div>
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+            <span style="font-family: monospace; font-size: 0.84rem; font-weight: 800; color: var(--teal-primary);">
+              <i class="fa-solid fa-hashtag"></i> {{ comp.tracking_id }}
+            </span>
+            <span class="badge badge-status-{{ comp.status.lower().replace(' ', '-') }}">
+              {{ comp.status }}
+            </span>
+          </div>
+
+          <div style="display: flex; align-items: center; gap: 8px; font-size: 0.82rem; color: var(--text-muted); margin-bottom: 10px;">
+            <i class="fa-solid fa-location-dot" style="color: var(--teal-primary);"></i>
+            <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500;">{{ comp.location }}</span>
+          </div>
+
+          <p style="font-size: 0.88rem; color: var(--text-main); margin-bottom: 16px; line-height: 1.5; min-height: 42px;">
+            {{ comp.ai_summary or comp.description or 'Civic issue registered for departmental inspection.' }}
+          </p>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-subtle); padding-top: 12px; margin-top: auto;">
+          <span class="badge badge-priority-{{ comp.ai_priority_level.lower() }}">
+            {{ comp.ai_priority_level }} ({{ comp.ai_priority_score }}/100)
+          </span>
+          <a href="{{ url_for('track_page', id=comp.tracking_id) }}" class="btn btn-outline btn-sm">
+            <span data-i18n="hero_btn_track">Track</span> <i class="fa-solid fa-arrow-right" style="font-size: 0.72rem;"></i>
+          </a>
+        </div>
+
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <!-- Modern Helpful Empty State -->
+    <div class="empty-state-card">
+      <div class="empty-state-icon">
+        <i class="fa-solid fa-clipboard-check"></i>
+      </div>
+      <div class="empty-state-title">No Active Grievances in Database</div>
+      <div class="empty-state-desc">
+        All complaints have been resolved or the system database was recently reset. Click below to file a new report or load synthetic demo data.
+      </div>
+      <a href="{{ url_for('submit_page') }}" class="btn btn-primary">
+        <i class="fa-solid fa-bullhorn"></i> File First Complaint
+      </a>
+    </div>
+    {% endif %}
+
+  </section>
+
+</div>
+
+<script>
+function handleQuickTrack() {
+  const input = document.getElementById('quickTrackInput');
+  const btn = document.getElementById('quickTrackBtn');
+  const val = input.value.trim();
+  if (!val) {
+    showToast('Please enter a Tracking ID to search.', 'error');
+    return;
+  }
+  if (btn) btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+  window.location.href = `/track?id=${encodeURIComponent(val)}`;
+}
+
+document.getElementById('quickTrackInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    handleQuickTrack();
+  }
+});
+</script>
+
+<style>
+.category-pill {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  transition: all 0.22s ease;
+}
+.category-pill:hover {
+  border-color: var(--border-accent);
+  background: var(--bg-card-hover);
+  transform: translateY(-2px);
+}
+.category-pill-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.05rem;
+}
+</style>
+{% endblock %}

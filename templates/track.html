@@ -1,0 +1,282 @@
+{% extends "base.html" %}
+
+{% block title %}Track Complaint Status - CivicAI{% endblock %}
+
+{% block content %}
+<div class="container">
+  
+  <div class="page-header" style="text-align: center; max-width: 780px; margin: 0 auto;">
+    <div style="display: inline-flex; align-items: center; gap: 8px; background: rgba(14, 165, 233, 0.1); border: 1px solid var(--border-blue); padding: 6px 16px; border-radius: 30px; font-size: 0.82rem; font-weight: 700; color: var(--blue-primary); margin-bottom: 18px;">
+      <i class="fa-solid fa-crosshairs"></i> Real-time Lifecycle Tracker
+    </div>
+
+    <h1 class="page-header-title">Track Grievance Lifecycle</h1>
+    <p class="page-header-subtitle" style="margin: 0 auto 24px;">
+      Follow your complaint through every municipal verification stage with real-time audit logs and field officer updates.
+    </p>
+
+    <!-- Tracking Search Form -->
+    <div style="background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); padding: 8px; margin: 0 auto 16px; display: flex; gap: 8px; max-width: 600px; box-shadow: var(--shadow-md);">
+      <div style="display: flex; align-items: center; padding-left: 16px; color: var(--teal-primary); font-size: 1.15rem;">
+        <i class="fa-solid fa-magnifying-glass"></i>
+      </div>
+      <input type="text" id="trackSearchInput" value="{{ prefill_id }}" placeholder="Enter Tracking ID (e.g. CIV-2026-SYN01)..." 
+             style="flex: 1; background: transparent; border: none; color: var(--text-main); font-size: 1.05rem; outline: none; font-family: inherit;">
+      <button class="btn btn-primary" id="trackSearchBtn">
+        <i class="fa-solid fa-arrow-right"></i> Track
+      </button>
+    </div>
+
+    <!-- Quick Sample ID Pills -->
+    <div style="display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; font-size: 0.82rem; color: var(--text-dim);">
+      <span>Try demonstration IDs:</span>
+      <button class="btn btn-sm btn-secondary" onclick="quickFillTrack('CIV-2026-SYN01')">💧 CIV-2026-SYN01 (Waterlogging)</button>
+      <button class="btn btn-sm btn-secondary" onclick="quickFillTrack('CIV-2026-SYN02')">⚠️ CIV-2026-SYN02 (Duplicate)</button>
+      <button class="btn btn-sm btn-secondary" onclick="quickFillTrack('CIV-2026-SYN10')">🛣️ CIV-2026-SYN10 (Road Damage)</button>
+      <button class="btn btn-sm btn-secondary" onclick="quickFillTrack('CIV-2026-SYN26')">⚡ CIV-2026-SYN26 (Urgent Wire)</button>
+      <button class="btn btn-sm btn-secondary" onclick="quickFillTrack('CIV-2026-SYN40')">✅ CIV-2026-SYN40 (Resolved)</button>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div id="trackLoading" style="display: none; text-align: center; padding: 60px 0;">
+    <i class="fa-solid fa-spinner fa-spin" style="font-size: 2.5rem; color: var(--teal-primary); margin-bottom: 16px;"></i>
+    <p style="color: var(--text-muted); font-size: 0.95rem;">Querying municipal audit database...</p>
+  </div>
+
+  <!-- Empty / Not Found State -->
+  <div id="trackNotFound" style="display: none; text-align: center; padding: 48px 24px; background: var(--bg-card); border-radius: var(--radius-lg); max-width: 600px; margin: 36px auto; border: 1px solid var(--border-subtle);">
+    <i class="fa-solid fa-circle-question" style="font-size: 2.8rem; color: var(--priority-critical); margin-bottom: 14px; display: block;"></i>
+    <h3 style="font-size: 1.3rem; font-weight: 800; margin-bottom: 8px;">Complaint Not Found</h3>
+    <p style="color: var(--text-muted); font-size: 0.92rem; margin-bottom: 22px; line-height: 1.5;">
+      We could not find a complaint matching that Tracking ID. Please verify your ID or report a new problem.
+    </p>
+    <a href="{{ url_for('submit_page') }}" class="btn btn-primary btn-sm">
+      <i class="fa-solid fa-circle-exclamation"></i> Report a Problem
+    </a>
+  </div>
+
+  <!-- Result Container (Populated via JS) -->
+  <div id="trackResultContainer" style="display: none; margin-top: 36px;">
+    
+    <!-- Top Summary Card with Stepper -->
+    <div class="card" style="margin-bottom: 28px;">
+      
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 22px;">
+        <div>
+          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px; flex-wrap: wrap;">
+            <span style="font-family: monospace; font-size: 1.35rem; font-weight: 800; color: var(--teal-primary);" id="resTrackingId">--</span>
+            <span id="resStatusBadge" class="badge">--</span>
+            <span id="resPriorityBadge" class="badge">--</span>
+          </div>
+          <div style="font-size: 0.9rem; color: var(--text-muted);" id="resCitizenSubDate">
+            Submitted by <strong id="resCitizenName" style="color: var(--text-main);">--</strong> on <span id="resDate">--</span>
+          </div>
+        </div>
+
+        <div style="text-align: right;">
+          <div style="font-size: 0.78rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 2px;">Assigned Department</div>
+          <div id="resDepartment" style="font-weight: 700; color: var(--text-main); font-size: 0.96rem;">--</div>
+          <div id="resOfficer" style="font-size: 0.84rem; color: var(--teal-primary); margin-top: 2px;">--</div>
+        </div>
+      </div>
+
+      <!-- 5-Step Lifecycle Stepper -->
+      <div class="stepper" id="lifecycleStepper">
+        <div class="step" data-step="Submitted">
+          <div class="step-circle"><i class="fa-solid fa-file-circle-check"></i></div>
+          <div class="step-label">Submitted</div>
+        </div>
+        <div class="step" data-step="Under Review">
+          <div class="step-circle"><i class="fa-solid fa-magnifying-glass"></i></div>
+          <div class="step-label">Under Review</div>
+        </div>
+        <div class="step" data-step="Assigned">
+          <div class="step-circle"><i class="fa-solid fa-user-gear"></i></div>
+          <div class="step-label">Assigned</div>
+        </div>
+        <div class="step" data-step="In Progress">
+          <div class="step-circle"><i class="fa-solid fa-screwdriver-wrench"></i></div>
+          <div class="step-label">In Progress</div>
+        </div>
+        <div class="step" data-step="Resolved">
+          <div class="step-circle"><i class="fa-solid fa-circle-check"></i></div>
+          <div class="step-label">Resolved</div>
+        </div>
+      </div>
+
+      <!-- Resolved Completion Banner (Displayed upon Resolution) -->
+      <div id="resResolvedBanner" style="display: none; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.4); border-radius: var(--radius-md); padding: 16px 20px; align-items: center; gap: 16px; margin-top: 14px;">
+        <div style="width: 44px; height: 44px; border-radius: 50%; background: #10b981; display: flex; align-items: center; justify-content: center; color: #060b19; font-size: 1.3rem; flex-shrink: 0; box-shadow: 0 0 16px rgba(16, 185, 129, 0.5);">
+          <i class="fa-solid fa-circle-check"></i>
+        </div>
+        <div style="flex: 1;">
+          <div style="font-weight: 800; color: #10b981; font-size: 1.05rem; display: flex; align-items: center; gap: 8px;">
+            <span>Grievance Successfully Remediated & Resolved</span>
+            <span class="badge badge-status-resolved" style="font-size: 0.72rem;">Case Closed</span>
+          </div>
+          <div style="font-size: 0.88rem; color: var(--text-main); margin-top: 4px; line-height: 1.4;" id="resResolvedDetails">
+            This issue has been inspected and remediated by the municipal department.
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- 2 Column Layout for Details & AI Telemetry -->
+    <div style="display: grid; grid-template-columns: 1.15fr 0.85fr; gap: 28px;" class="track-grid">
+      
+      <!-- Left Column: Complaint Description & Photo & Timeline -->
+      <div>
+        <div class="card" style="margin-bottom: 24px;">
+          <h3 class="card-title" style="margin-bottom: 14px;">
+            <i class="fa-solid fa-file-lines" style="color: var(--teal-primary);"></i> Issue Description
+          </h3>
+          <p id="resDescription" style="color: var(--text-main); font-size: 0.96rem; line-height: 1.6; white-space: pre-wrap; margin-bottom: 18px;">
+            --
+          </p>
+
+          <div style="display: flex; gap: 16px; flex-wrap: wrap; background: rgba(255,255,255,0.02); padding: 12px 16px; border-radius: var(--radius-md); font-size: 0.88rem;">
+            <div>
+              <span style="color: var(--text-dim);"><i class="fa-solid fa-location-dot" style="color: var(--teal-primary);"></i> Location:</span>
+              <span id="resLocation" style="color: var(--text-main); font-weight: 600; margin-left: 4px;">--</span>
+            </div>
+            <div>
+              <span style="color: var(--text-dim);"><i class="fa-solid fa-tag" style="color: var(--blue-primary);"></i> Category:</span>
+              <span id="resCategory" style="color: var(--text-main); font-weight: 600; margin-left: 4px;">--</span>
+            </div>
+          </div>
+
+          <!-- Uploaded Photo Box -->
+          <div id="resPhotoContainer" style="display: none; margin-top: 20px; border-top: 1px solid var(--border-subtle); padding-top: 18px;">
+            <div style="font-size: 0.8rem; font-weight: 700; color: var(--text-dim); text-transform: uppercase; margin-bottom: 10px;">Citizen Photographic Evidence</div>
+            <a id="resPhotoLink" href="#" target="_blank">
+              <img id="resPhotoImg" src="" alt="Complaint photo" style="max-height: 240px; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); object-fit: cover;">
+            </a>
+          </div>
+        </div>
+
+        <!-- Google Maps Geolocation & Field Tracking Card -->
+        <div class="card" id="trackMapCard" style="margin-bottom: 24px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 10px;">
+            <h3 class="card-title" style="margin: 0;">
+              <i class="fa-solid fa-map-location-dot" style="color: var(--teal-primary);"></i> Field Geolocation & Live Map
+            </h3>
+            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+              <span class="badge" id="trackGpsBadge" style="background: rgba(14, 165, 233, 0.12); color: var(--blue-primary); border: 1px solid var(--border-blue); font-family: monospace; font-size: 0.82rem; padding: 6px 12px;">
+                <i class="fa-solid fa-location-crosshairs"></i> <span id="trackCoordText">12.9716° N, 77.5946° E</span>
+              </span>
+              <a id="trackGoogleMapsBtn" href="#" target="_blank" class="btn btn-outline btn-sm" style="display: inline-flex; align-items: center; gap: 7px; border-color: #4285F4; color: #fff; background: rgba(66, 133, 244, 0.18); font-weight: 600;">
+                <i class="fa-brands fa-google" style="color: #4285F4; font-size: 1rem;"></i> Open in Google Maps
+              </a>
+            </div>
+          </div>
+
+          <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 14px; line-height: 1.5;">
+            Exact incident GPS coordinates mapped for municipal response teams, field inspection, and dispatch routing.
+          </p>
+
+          <!-- Interactive Google Maps Container -->
+          <div id="trackMap" style="height: 340px; width: 100%; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); overflow: hidden; position: relative;"></div>
+
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px; font-size: 0.8rem; color: var(--text-dim); flex-wrap: wrap; gap: 8px;">
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <i class="fa-solid fa-layer-group" style="color: var(--teal-primary);"></i>
+              <span>Layer switchable: Google Streets, Satellite & Terrain</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--teal-primary); opacity: 0.7;"></span>
+              <span id="trackZoneRadiusText">250m Field Inspection Perimeter</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Activity Audit Log Timeline -->
+        <div class="card">
+          <h3 class="card-title" style="margin-bottom: 20px;">
+            <i class="fa-solid fa-timeline" style="color: var(--teal-primary);"></i> Redressal Audit Trail
+          </h3>
+          <div class="timeline" id="resTimelineList">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column: AI Triage & Explanation Breakdown -->
+      <div>
+        <div class="ai-panel" style="margin-bottom: 24px;">
+          <div class="ai-badge-header">
+            <div class="ai-indicator">
+              <i class="fa-solid fa-microchip"></i>
+              <span>CivicAI Diagnostic Telemetry</span>
+            </div>
+            <span style="font-size: 0.72rem; color: var(--teal-primary); font-weight: 700;">VERIFIED AI AUDIT</span>
+          </div>
+
+          <!-- AI Summary -->
+          <div class="ai-item">
+            <div class="ai-item-title"><i class="fa-solid fa-quote-left"></i> Municipal Executive Summary</div>
+            <p id="resAiSummary" style="font-size: 0.9rem; color: var(--text-main); line-height: 1.5; font-style: italic; background: rgba(255,255,255,0.03); padding: 14px; border-radius: var(--radius-sm); border-left: 3px solid var(--teal-primary);">
+              --
+            </p>
+          </div>
+
+          <!-- Priority Scoring Explanation -->
+          <div class="ai-item">
+            <div class="ai-item-title"><i class="fa-solid fa-scale-balanced"></i> Priority Risk Justification</div>
+            <div id="resAiPriorityExpl" style="font-size: 0.88rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 10px;">
+              --
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-dim);">
+              <span>Safety Risk & Impact Score</span>
+              <strong id="resAiPriorityScoreText" style="color: var(--text-main);">0/100</strong>
+            </div>
+            <div class="progress-bar-container">
+              <div id="resAiPriorityBar" class="progress-bar-fill" style="width: 0%; background: var(--teal-primary);"></div>
+            </div>
+          </div>
+
+          <!-- Duplicate Detection Status -->
+          <div class="ai-item">
+            <div class="ai-item-title"><i class="fa-solid fa-clone"></i> Duplicate Detection Status</div>
+            <div id="resDuplicateStatus" style="font-size: 0.86rem; color: var(--text-muted); line-height: 1.4;">
+              --
+            </div>
+          </div>
+
+          <!-- AI Category Verification -->
+          <div class="ai-item">
+            <div class="ai-item-title"><i class="fa-solid fa-circle-check"></i> NLP Taxonomy Verification</div>
+            <div style="font-size: 0.86rem; color: var(--text-muted);" id="resAiCategoryDetails">
+              --
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/track.js') }}"></script>
+<script>
+function quickFillTrack(id) {
+  const input = document.getElementById('trackSearchInput');
+  input.value = id;
+  const searchBtn = document.getElementById('trackSearchBtn');
+  searchBtn.click();
+}
+</script>
+<style>
+@media (max-width: 860px) {
+  .track-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+</style>
+{% endblock %}
