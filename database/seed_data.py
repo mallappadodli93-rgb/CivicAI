@@ -744,18 +744,22 @@ SYNTHETIC_COMPLAINTS = [
     }
 ]
 
-def seed_database():
+def seed_database(skip_init=False):
     """Seeds exactly 40 synthetic complaints into SQLite."""
     print("="*70)
     print("INITIALIZING CIVICAI DEMONSTRATION DATASET (40 SYNTHETIC COMPLAINTS)")
     print("="*70)
-    init_db()
+    if not skip_init:
+        init_db(auto_seed=False)
 
-    with get_db_connection() as conn:
+    conn = get_db_connection()
+    try:
         cursor = conn.cursor()
         cursor.execute("DELETE FROM activity_logs")
         cursor.execute("DELETE FROM complaints")
         conn.commit()
+    finally:
+        conn.close()
 
     seeded_records = []
     category_counts = {}

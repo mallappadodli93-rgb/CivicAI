@@ -18,7 +18,29 @@ app = Flask(__name__)
 app.config.from_object(Config)
 
 # Ensure upload directory exists
-os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+try:
+    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+except Exception as e:
+    print(f"Warning creating upload directory: {e}")
+
+# Ensure database is initialized at startup (critical for serverless environments like Vercel)
+try:
+    init_db()
+except Exception as e:
+    import traceback
+    traceback.print_exc()
+    print(f"Startup DB init warning: {e}")
+
+@app.before_request
+def ensure_db():
+    """Guarantees database tables and seed data exist before processing requests on serverless cold starts."""
+    if not os.path.exists(Config.DATABASE_PATH):
+        try:
+            init_db()
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            print(f"Runtime DB init warning: {e}")
 
 VALID_STATUSES = {'Submitted', 'Under Review', 'Assigned', 'In Progress', 'Resolved'}
 
@@ -813,13 +835,19 @@ def get_map_hotspots():
 def uploaded_file(filename):
     """
     Safely serves citizen uploaded photos from the configured upload directory.
+    Falls back to static/uploads if file is packaged in the repository.
     Returns 404 if file does not exist.
     """
     safe_name = secure_filename(filename)
     file_path = os.path.join(app.config['UPLOAD_FOLDER'], safe_name)
-    if not os.path.isfile(file_path):
-        return jsonify({"error": "File not found."}), 404
-    return send_from_directory(app.config['UPLOAD_FOLDER'], safe_name)
+    if os.path.isfile(file_path):
+        return send_from_directory(app.config['UPLOAD_FOLDER'], safe_name)
+
+    fallback_path = os.path.join(Config.BASE_DIR, 'static', 'uploads', safe_name)
+    if os.path.isfile(fallback_path):
+        return send_from_directory(os.path.join(Config.BASE_DIR, 'static', 'uploads'), safe_name)
+
+    return jsonify({"error": "File not found."}), 404
 
 # ==========================================
 # ERROR HANDLERS
@@ -841,7 +869,14 @@ def file_too_large_error(e):
 
 @app.errorhandler(500)
 def internal_server_error(e):
-    return jsonify({"success": False, "error": "An internal server error occurred."}), 500
+    import traceback
+    traceback.print_exc()
+    if request.path.startswith('/api/'):
+        return jsonify({"success": False, "error": f"Internal server error: {str(e)}"}), 500
+    try:
+        return render_template('home.html', stats={"total": 0, "pending": 0, "resolved": 0, "urgent": 0}, recent_complaints=[]), 500
+    except Exception:
+        return jsonify({"success": False, "error": f"An internal server error occurred: {str(e)}"}), 500
 
 # ==========================================
 # APPLICATION ENTRYPOINT

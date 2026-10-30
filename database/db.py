@@ -10,8 +10,8 @@ def get_db_connection():
     conn.execute("PRAGMA foreign_keys = ON")
     return conn
 
-def init_db():
-    """Initializes the database schema if tables do not exist and applies migrations."""
+def init_db(auto_seed=True):
+    """Initializes the database schema if tables do not exist, applies migrations, and seeds initial data if empty."""
     schema_path = os.path.join(os.path.dirname(__file__), 'schema.sql')
     with open(schema_path, 'r') as f:
         schema_sql = f.read()
@@ -37,6 +37,21 @@ def init_db():
         conn.commit()
     finally:
         conn.close()
+
+    if auto_seed:
+        check_conn = get_db_connection()
+        try:
+            cur = check_conn.cursor()
+            cur.execute("SELECT COUNT(*) FROM complaints")
+            count = cur.fetchone()[0]
+            if count == 0:
+                print("CivicAI: Empty database detected, auto-seeding demonstration dataset...")
+                from database.seed_data import seed_database
+                seed_database(skip_init=True)
+        except Exception as e:
+            print(f"CivicAI: Database auto-seed notice: {e}")
+        finally:
+            check_conn.close()
 
 def query_db(query, args=(), one=False):
     """Utility to query database and return dictionary rows."""
